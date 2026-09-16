@@ -1,0 +1,35 @@
+allow-lan: false
+log-level: info
+mixed-port: 7892
+mode: rule
+proxies:
+- cipher: chacha20-ietf
+  name: ssr2.762988.xyz:33336
+  obfs: tls1.2_ticket_auth
+  obfs-param: ''
+  password: dongtaiwang.com
+  port: 33336
+  protocol: auth_chain_a
+  protocol-param: ''
+  remarks: SSR节点
+  server: ssr2.762988.xyz
+  type: ssr
+proxy-groups:
+- interval: 300
+  name: 自动选最优
+  proxies:
+  - ssr2.762988.xyz:33336
+  tolerance: 50
+  type: url-test
+  url: http://www.gstatic.com/generate_204
+- name: 负载均衡
+  proxies:
+  - ssr2.762988.xyz:33336
+  strategy: consistent-hashing
+  type: load-balance
+rules:
+- DOMAIN-SUFFIX,cn,DIRECT
+- IP-CIDR,127.0.0.0/8,DIRECT
+- IP-CIDR,192.168.0.0/16,DIRECT
+- MATCH,自动选最优
+socks-port: 10806
