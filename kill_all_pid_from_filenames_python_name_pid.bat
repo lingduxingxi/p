@@ -1,0 +1,3 @@
+title=kill_all_pid_from_filenames_python_name_pid.py
+python kill_all_pid_from_filenames_python_name_pid.py
+cmd.exe
