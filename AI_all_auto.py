@@ -212,9 +212,9 @@ def run_all(state_all='所有'):
             if n>=8:
                 if notification_tip:
                     notification_tip = False
-                    answer = ask_yes_no_question("通知过于频繁？是否需要关闭所有通知？")
-                    if answer:
-                        show_notification_state = False  # 关闭通知
+                    # answer = ask_yes_no_question("通知过于频繁？是否需要关闭所有通知？")
+                    # if answer:
+                    show_notification_state = False  # 关闭通知
             # os.system("taskkill /F /IM goflyway_all.exe")
             kill_exe('goflyway_all.exe')
             state_goflyway = start_GoflywayTools_exe(all_local_port,'所有',n,show_notification_state)
@@ -300,9 +300,9 @@ def run_all(state_all='所有'):
                                         if '配置文件不存在' not in states:#配置文件存在
                                             if notification_tip:
                                                 notification_tip = False
-                                                answer = ask_yes_no_question("通知过于频繁？是否需要关闭所有通知？")
-                                                if answer:
-                                                    show_notification_state = False  # 关闭通知
+                                                # answer = ask_yes_no_question("通知过于频繁？是否需要关闭所有通知？")
+                                                # if answer:
+                                                show_notification_state = False  # 关闭通知
                                         else:#配置文件不存在
                                             pass
         except Exception as err:
