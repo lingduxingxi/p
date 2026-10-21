@@ -2,7 +2,7 @@ allow-lan: true
 external-controller: :9090
 log-level: info
 mode: Rule
-port: 7890
+mixed-port: 8892
 proxies:
 - name: jp|707c|puddincat07@Telegram
   password: u63SxILNwtrQZ7Y1ZrFaZfsA
