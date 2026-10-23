@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # import json
+import binascii
 import re
 import subprocess
 import threading
@@ -20,28 +21,28 @@ import requests
 from tqdm import tqdm
 import logging
 import cmd_on_color
-from urllib.parse import unquote, parse_qs
+# from urllib.parse import unquote, parse_qs
 # from SS2 import get_config_information as get_config_informationurl_SS2
 from datetime import datetime
-
+from urllib.parse import unquote, parse_qsl
 from download_files import download_file
 from notification_simulator import show_notification
 from run_port_exe import run_exe
-from upload_node import upload
+# from upload_node import upload
 
 # from GoflywayTools import check_proxy_connection
 
 logging.captureWarnings(True)  # 强制取消证书验证警告
-url6 = "https://raw.githubusercontent.com/ripaojiedian/freenode/refs/heads/main/ssr"
-# url2 = 'https://sub.crossxx.com:8443/sub/ssr/1747209604'
-url2 = 'https://clash.crossxx.com/sub/ssr/1770552004'
+url6 = "https://raw.githubusercontent.com/myominn062-svg/mk-studio-vpn-service/main/ssr_configs.txt"
+
 
 url3 = "https://github.com/aiboboxx/v2rayfree"
 url8 = 'https://dgithub.xyz/aiboboxx/v2rayfree'
 
 url1_source = 'https://raw.githubusercontent.com/Huibq/TrojanLinks/master/links/ssr'
 url1 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/Huibq/TrojanLinks/master/links/ssr'
-
+url2_source = 'https://raw.githubusercontent.com/myominn062-svg/mk-studio-vpn-service/main/ssr_configs.txt'
+url2 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/myominn062-svg/mk-studio-vpn-service/main/ssr_configs.txt'
 
 type_ = os.path.basename(__file__).replace('.py', '')
 # open_Shadowsocks1 = os.getcwd() + fr'\{type_}\Shadowsocks1.exe'
@@ -492,60 +493,554 @@ def decode_base64(data):
     data += '=' * (-len(data) % 4)
     return base64.urlsafe_b64decode(data.encode('utf-8')).decode('utf-8')
 
-def parse_ssr(ssr_url):
-    if not ssr_url.startswith('ssr://'):
-        return None
-    try:
-        decoded = decode_base64(ssr_url[6:])
-        parts = decoded.split('/?')
-        server_info = parts[0].split(':')
-        params = {}
-        if len(parts) > 1:
-            query = parts[1]
-            for pair in query.split('&'):
-                if '=' in pair:
-                    key, val = pair.split('=', 1)
-                    params[key] = unquote(decode_base64(val)) if val else ''
 
-        # return {
-        #     'server': server_info[0],
-        #     'port': server_info[1],
-        #     'protocol': server_info[2],
-        #     'method': server_info[3],
-        #     'obfs': server_info[4],
-        #     'password': decode_base64(server_info[5]),
-        #     'params': params
-        # }
-        server = server_info[0].rstrip()
-        port =  server_info[1].rstrip()
-        protocol =  server_info[2].rstrip()
-        method = server_info[3].rstrip()
-        obfs = server_info[4].rstrip()
-        password = decode_base64(server_info[5]).rstrip()
-        params = params
-        if method == 'rc4':
-            return {'error': str(method), 'original': ssr_url}
+
+
+def parse_ssr(ssr_url):
+    """
+    解析 SSR 分享链接，转换为代理配置字典。
+
+    支持：
+    - 标准 Base64 / URL-safe Base64
+    - 自动补齐 Base64 末尾填充符
+    - password 字段的独立 Base64 解码
+    - obfsparam、protoparam、remarks、group 参数解析
+    - rc4、rc4-md5 等加密方法保留原值，不在解析阶段拒绝
+    - 单个节点解析失败时返回 error，不影响其他节点
+    """
+
+    if not isinstance(ssr_url, str):
+        return {
+            "error": "SSR 链接必须是字符串",
+            "original": str(ssr_url)
+        }
+
+    ssr_url = ssr_url.strip()
+
+    if not ssr_url.lower().startswith("ssr://"):
+        return {
+            "error": "不是有效的 ssr:// 链接",
+            "original": ssr_url
+        }
+
+    def b64_decode_bytes(value):
+        """严格解码 Base64 字节，兼容 URL-safe 格式和缺失的填充符。"""
+        if isinstance(value, bytes):
+            raw_value = value
         else:
-            return {
-                "name": f"{server}:{port}",
-                "type": "ssr",
-                "server": server,
-                "port": int(port),
-                "password": password,
-                "cipher": method,
-                "obfs": obfs,
-                "protocol": protocol,
-                "obfs-param": params.get('obfsparam', ''),
-                "protocol-param": params.get('protoparam', '')
-            }
+            raw_value = str(value).strip()
+            raw_value = re.sub(r"\s+", "", raw_value)
+
+            if not raw_value:
+                return b""
+
+            # 标准 SSR Base64 通常使用 + /，URL-safe 格式可能使用 - _。
+            raw_value = raw_value.replace("-", "+").replace("_", "/")
+
+            # Base64 长度余数为 1 时，不可能仅靠补 = 修复。
+            remainder = len(raw_value) % 4
+            if remainder == 1:
+                raise ValueError(
+                    "Base64 字符串长度无效，长度余数为 1"
+                )
+
+            if remainder:
+                raw_value += "=" * (4 - remainder)
+
+            raw_value = raw_value.encode("ascii")
+
+        return base64.b64decode(raw_value, validate=True)
+
+    def b64_decode_text(value):
+        """Base64 解码为文本。"""
+        return b64_decode_bytes(value).decode("utf-8-sig")
+
+    def decode_password(value):
+        """
+        解码 SSR 密码字段。
+
+        SSR 主体中的密码一般是 Base64 编码。
+        如果解码后不是 UTF-8，返回明确错误，避免生成错误密码。
+        """
+        value = value.strip()
+
+        if not value:
+            return ""
+
+        return b64_decode_text(value).strip()
+
+    def decode_parameter(value):
+        """
+        解析 SSR 查询参数值。
+
+        SSR 参数常见形式：
+        - obfsparam=...
+        - protoparam=...
+        - remarks=...
+        - group=...
+
+        参数值先经过 URL 解码。
+        对 remarks/group，通常是 URL 编码后的文本；
+        对 obfsparam/protoparam，部分订阅源会额外使用 Base64。
+        """
+        if value is None:
+            return ""
+
+        value = unquote(str(value)).strip()
+
+        if not value:
+            return ""
+
+        # 参数值中有中文、空格、标点等时，优先按普通文本保留。
+        # 对纯 Base64 字符串，尝试解码并验证结果。
+        if not re.fullmatch(r"[A-Za-z0-9+/=_-]+", value):
+            return value
+
+        try:
+            decoded = b64_decode_text(value)
+
+            # 只接受可打印文本，防止将普通参数误判为 Base64。
+            if decoded and all(
+                ch.isprintable() or ch in "\r\n\t"
+                for ch in decoded
+            ):
+                return decoded
+        except (
+            ValueError,
+            UnicodeDecodeError,
+            binascii.Error
+        ):
+            pass
+
+        return value
+
+    try:
+        # 1. 解码外层 SSR Base64。
+        encoded = ssr_url[6:].strip()
+
+        # 外层分享链接中不应包含空格，但有些复制过程会插入换行。
+        encoded = re.sub(r"\s+", "", encoded)
+
+        decoded = b64_decode_text(encoded).strip()
+
+        if not decoded:
+            raise ValueError("外层 Base64 解码结果为空")
+
+        # 2. 分离主体和查询参数。
+        if "/?" in decoded:
+            server_part, query_part = decoded.split("/?", 1)
+        else:
+            server_part, query_part = decoded, ""
+
+        server_part = server_part.strip()
+
+        # SSR 标准格式：
+        # server:port:protocol:method:obfs:password
+        #
+        # 不要在这里先对整个主体调用 unquote，
+        # 否则可能把编码后的分隔符变成真实分隔符。
+        fields = server_part.split(":")
+
+        if len(fields) < 6:
+            raise ValueError(
+                "SSR 主体字段不足："
+                f"预期至少 6 段，实际得到 {len(fields)} 段"
+            )
+
+        server = fields[0].strip()
+        port_text = fields[1].strip()
+        protocol = fields[2].strip()
+        method = fields[3].strip()
+        obfs = fields[4].strip()
+
+        # 标准 IPv4/域名 SSR 链接中，密码是第 6 段。
+        # 合并剩余字段，避免非标准数据中的额外冒号被直接丢弃。
+        password_encoded = ":".join(fields[5:]).strip()
+
+        if not server:
+            raise ValueError("服务器地址为空")
+
+        if not port_text.isdigit():
+            raise ValueError(f"端口号无效：{port_text!r}")
+
+        port = int(port_text)
+
+        if not 1 <= port <= 65535:
+            raise ValueError(f"端口号超出有效范围：{port}")
+
+        if not protocol:
+            raise ValueError("SSR protocol 字段为空")
+
+        if not method:
+            raise ValueError("SSR method 字段为空")
+
+        if not obfs:
+            raise ValueError("SSR obfs 字段为空")
+
+        # 3. 解码密码。
+        password = decode_password(password_encoded)
+
+        # 4. 解析查询参数。
+        # parse_qsl 可正确处理参数中的多个等号和空值。
+        raw_params = {}
+
+        if query_part:
+            for key, value in parse_qsl(
+                query_part,
+                keep_blank_values=True
+            ):
+                raw_params[key.strip().lower()] = value
+
+        def get_param(*names):
+            """按多个兼容名称获取参数。"""
+            for name in names:
+                key = name.lower()
+
+                if key in raw_params:
+                    return decode_parameter(raw_params[key])
+
+            return ""
+
+        obfs_param = get_param(
+            "obfsparam",
+            "obfs-param",
+            "obfs_param"
+        )
+
+        protocol_param = get_param(
+            "protoparam",
+            "protocol-param",
+            "protocol_param"
+        )
+
+        remarks = get_param(
+            "remarks",
+            "remark",
+            "name"
+        )
+
+        group = get_param("group")
+
+        # 5. 构造配置。
+        # 不在解析阶段拒绝 rc4、rc4-md5。
+        # 后续内核不支持时，应由启动或连接阶段报告。
+        result = {
+            "name": f"{server}:{port}",
+            "type": "ssr",
+            "server": server,
+            "port": port,
+            "password": password,
+            "cipher": method,
+            "obfs": obfs,
+            "protocol": protocol,
+            "obfs-param": obfs_param,
+            "protocol-param": protocol_param
+        }
+
+        if remarks:
+            result["remarks"] = remarks
+
+        if group:
+            result["group"] = group
+
+        return result
+
     except Exception as e:
-        return {'error': str(e), 'original': ssr_url}
+        return {
+            "error": f"{type(e).__name__}: {e}",
+            "original": ssr_url
+        }
+
+
+
 
 def get_config_informationurl1(local_port):
+    import base64
+    import binascii
+    import re
+    import time
+    import requests
+
+    reg_list = []
+    res_list = []
+    config_list = []
+    config_err_list = []
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/107.0.0.0 Safari/537.36 "
+            "Edg/107.0.1418.26"
+        )
+    }
+
+    # 保留原有代理设置。
+    proxy_port = 88
+    proxies_dict = {
+        "http": f"socks5h://127.0.0.1:{proxy_port}",
+        "https": f"socks5h://127.0.0.1:{proxy_port}",
+    }
+
+    def fetch_subscription(url_candidates, label):
+        """
+        获取订阅内容。
+        前两次直接连接，后续尝试通过本地 SOCKS5 代理连接。
+        每次请求失败后尝试备用 URL，避免重复使用旧响应。
+        """
+        url_candidates = [
+            url for url in url_candidates
+            if isinstance(url, str) and url.strip()
+        ]
+
+        if not url_candidates:
+            print(f"{label}：没有可用的订阅 URL")
+            return None
+
+        # 最多尝试 9 轮。
+        for attempt in range(9):
+            use_proxy = attempt >= 2
+
+            if use_proxy:
+                print(f"{label}：使用 AI_all_auto 代理 {proxy_port}")
+            else:
+                print(f"{label}：不使用代理")
+
+            for url in url_candidates:
+                try:
+                    request_kwargs = {
+                        "headers": headers,
+                        "timeout": 12,
+                    }
+
+                    if use_proxy:
+                        request_kwargs["proxies"] = proxies_dict
+
+                    response = requests.get(url, **request_kwargs)
+
+                    # HTTP 404、403、500 等不应被误认为订阅成功。
+                    response.raise_for_status()
+
+                    text = response.text
+
+                    if not text or not text.strip():
+                        print(f"{label}：订阅响应为空，尝试下一个地址")
+                        continue
+
+                    print(f"{label}：获取响应成功")
+                    return text
+
+                except requests.RequestException as err:
+                    print(f"{label} 请求失败：{err}")
+
+                except Exception as err:
+                    print(f"{label} 发生异常：{err}")
+
+            if attempt < 8:
+                print(f"{label}：本轮失败，2 秒后重试")
+                time.sleep(2)
+
+        print(f"{label}：已达到最大重试次数，跳过该订阅")
+        return None
+
+    def extract_ssr_links(content, label):
+        """
+        解析订阅响应。
+
+        支持：
+        1. 响应直接包含 ssr:// 链接。
+        2. 响应为 Base64 编码的订阅内容。
+        3. Base64 使用 URL-safe 字符集。
+        4. Base64 缺少结尾 padding。
+        5. 订阅内容含空行、BOM 和多条链接。
+
+        非法数据只跳过当前订阅，不让整个函数崩溃。
+        """
+        if not isinstance(content, str) or not content.strip():
+            print(f"{label}：响应内容为空")
+            return []
+
+        content = content.strip().lstrip("\ufeff")
+
+        def find_links(text):
+            # 按行提取，允许链接前后存在空白。
+            links = []
+
+            for line in text.splitlines():
+                line = line.strip().lstrip("\ufeff")
+
+                if not line:
+                    continue
+
+                # 只提取 SSR 链接，避免将其他协议误传给 parse_ssr。
+                match = re.search(r"ssr://[A-Za-z0-9_\-+/=%]+", line)
+
+                if match:
+                    links.append(match.group(0))
+
+            return links
+
+        # 情况一：响应本身已经包含 SSR 链接。
+        direct_links = find_links(content)
+
+        if direct_links:
+            print(f"{label}：直接提取到 {len(direct_links)} 条 SSR 链接")
+            return direct_links
+
+        # 情况二：尝试将响应视为 Base64 订阅。
+        # 移除空白字符，但不对普通网页内容进行强制 UTF-8 解码。
+        compact = re.sub(r"\s+", "", content)
+
+        if not compact:
+            print(f"{label}：去除空白后没有有效内容")
+            return []
+
+        # Base64 长度余数为 1 时，无法通过补 padding 修复。
+        if len(compact) % 4 == 1:
+            print(
+                f"{label}：内容不是有效的 Base64，"
+                f"长度余数为 1，疑似网页错误响应或数据损坏"
+            )
+            return []
+
+        # 同时尝试标准 Base64 和 URL-safe Base64。
+        candidates = [
+            compact,
+            compact.replace("-", "+").replace("_", "/"),
+        ]
+
+        decoded_text = None
+        seen = set()
+
+        for candidate in candidates:
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+
+            if len(candidate) % 4 == 1:
+                continue
+
+            padded = candidate + ("=" * ((-len(candidate)) % 4))
+
+            try:
+                decoded_bytes = base64.b64decode(
+                    padded.encode("ascii"),
+                    validate=True
+                )
+
+            except (ValueError, UnicodeError, binascii.Error):
+                continue
+
+            try:
+                # utf-8-sig 同时兼容带 BOM 的 UTF-8 文本。
+                decoded_text = decoded_bytes.decode("utf-8-sig")
+                break
+
+            except UnicodeDecodeError as err:
+                print(
+                    f"{label}：Base64 解码后的内容不是有效 UTF-8 文本，"
+                    f"错误位置 {err.start}，跳过该响应"
+                )
+
+        if decoded_text is None:
+            print(
+                f"{label}：无法将响应解析为有效的 Base64 UTF-8 订阅"
+            )
+            print(f"{label}：响应前 100 个字符：{content[:100]!r}")
+            return []
+
+        # 解码后再次提取 SSR 链接。
+        links = find_links(decoded_text)
+
+        if links:
+            print(f"{label}：Base64 解码后提取到 {len(links)} 条 SSR 链接")
+        else:
+            print(
+                f"{label}：Base64 解码成功，但内容中没有找到 SSR 链接"
+            )
+            print(f"{label}：解码内容前 100 个字符：{decoded_text[:100]!r}")
+
+        return links
+
+    # ---------------------------------------------------------
+    # 第一组订阅：优先 url1，失败时尝试 url1_source。
+    # ---------------------------------------------------------
+    print("使用连接1进行更新！")
+
+    content1 = fetch_subscription(
+        [url1, url1_source],
+        "连接1"
+    )
+
+    if content1 is not None:
+        reg_list.append(content1)
+        print("连接1获取成功！")
+    else:
+        print("连接1获取失败，继续尝试其他订阅。")
+
+    # ---------------------------------------------------------
+    # 第二组订阅：获取 url6。
+    # ---------------------------------------------------------
+    print("使用连接2进行更新！")
+
+    content2 = fetch_subscription(
+        [url6],
+        "连接2"
+    )
+
+    if content2 is not None:
+        reg_list.append(content2)
+        print("连接2获取成功！")
+    else:
+        print("连接2获取失败，继续处理已取得的订阅。")
+
+    # ---------------------------------------------------------
+    # 解析订阅响应，避免对错误页面强制 Base64 解码。
+    # ---------------------------------------------------------
+    for index, reg in enumerate(reg_list, start=1):
+        links = extract_ssr_links(reg, f"订阅响应 {index}")
+        res_list.extend(links)
+
+    # 去重，同时保持原有顺序。
+    ssr_links = list(dict.fromkeys(res_list))
+
+    print("get_config_informationurl1_ssr_links626 节点", len(ssr_links))
+
+    # ---------------------------------------------------------
+    # 解析所有 SSR 链接。
+    # 保留外部 parse_ssr(link) 函数的调用方式。
+    # ---------------------------------------------------------
+    for index, link in enumerate(ssr_links, start=1):
+        try:
+            node = parse_ssr(link)
+
+            if node:
+                config_list.append(node)
+            else:
+                config_err_list.append(link)
+                print(f"SSR 节点解析失败，第 {index} 条：{link[:80]}")
+
+        except Exception as err:
+            config_err_list.append(link)
+            print(f"SSR 节点解析异常，第 {index} 条：{err}")
+
+    print(
+        f"get_config_informationurl1："
+        f"成功解析 {len(config_list)}/{len(ssr_links)} 个 SSR 节点"
+    )
+
+    if config_err_list:
+        print(f"无法解析的 SSR 节点数量：{len(config_err_list)}")
+
+    return config_list
+
+
+
+def get_config_informationurl2(local_port):
     rsp = ''
     reg = ''
     html = ''
-    link_url1_successful = ''
+    link_url2_successful = ''
     link_url2_successful = ''
     link_url3_successful = ''
     reg_list = []
@@ -553,99 +1048,51 @@ def get_config_informationurl1(local_port):
     n = 0
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
     while True:
-        print('使用连接1进行更新！')
+        print('使用连接2进行更新！')
         try:
-            # req = urllib.request.Request(url1)
+            # req = urllib.request.Request(url2)
             # webpage = urllib.request.urlopen(req)
 
             if n >= 2:
                 print('使用AI_all_auto代理88')
                 proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                 try:
-                    reg = requests.get(url1_source, headers=headers,proxies=proxies, timeout=8).text
+                    reg = requests.get(url2_source, headers=headers,proxies=proxies, timeout=8).text
                 except:
-                    reg = requests.get(url1, headers=headers,proxies=proxies, timeout=8).text
+                    reg = requests.get(url2, headers=headers,proxies=proxies, timeout=8).text
             else:
                 print('不使用代理')
                 try:
-                    reg = requests.get(url1, headers=headers, timeout=8).text
+                    reg = requests.get(url2, headers=headers, timeout=8).text
                 except:
-                    reg = requests.get(url1_source, headers=headers, timeout=8).text
+                    reg = requests.get(url2_source, headers=headers, timeout=8).text
             # print(reg)
             # soup = BeautifulSoup(reg, 'html.parser')
-            reg_list.append(reg)
-            link_url1_successful = '连接1成功！'
-            print(link_url1_successful)
-            break
-
-        except Exception as err:
-            print(err)
-            print('连接1错误，2秒后重试！')
-            time.sleep(2)
-        # print(n)
-        if n >= 8:
-            break
-        n += 1
-
-    n = 0
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
-    while True:
-        print('使用连接1进行更新！')
-        try:
-            # req = urllib.request.Request(url1)
-            # webpage = urllib.request.urlopen(req)
-
-            if n >= 2:
-                print('使用AI_all_auto代理88')
-                proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                try:
-                    reg = requests.get(url6, headers=headers,proxies=proxies, timeout=8).text
-                except:
-                    pass
-                    # reg = requests.get(url6, headers=headers,proxies=proxies, timeout=8).text
+            # reg_list.append(reg)
+            if 'DOCTYPE html' in reg:
+                pass
             else:
-                print('不使用代理')
-                try:
-                    reg = requests.get(url6, headers=headers, timeout=8).text
-                except:
-                    pass
-                    # reg = requests.get(url6, headers=headers, timeout=8).text
-            # print('reg611',reg)
-            # soup = BeautifulSoup(reg, 'html.parser')
-            reg_list.append(reg)
-            link_url1_successful = '连接1成功！'
-            print(link_url1_successful)
-            break
+                reg_list = reg.split()
+                link_url2_successful = '连接2成功！'
+                print(link_url2_successful)
+                break
 
         except Exception as err:
             print(err)
-            print('连接1错误，2秒后重试！')
+            print('连接2错误，2秒后重试！')
             time.sleep(2)
         # print(n)
         if n >= 8:
             break
         n += 1
-
     res_list = []
     for reg in reg_list:
-        # print('reg591',reg)
-        # data = reg.data.decode()
-        # 补全填充（假设原字符串缺少`=`）
-        missing_padding = len(reg) % 4
-        if missing_padding != 0:
-            reg += "=" * (4 - missing_padding)
-        b = bytes(reg, encoding='utf-8')
-        b64 = base64.b64decode(b).decode()
-        # print(b64)
-        b64textsplit = b64.split('\n')
-
-        for i, ssr in enumerate(b64textsplit):
             # print(sss[0:3])
             # if 'ssr:' in sss[0:3] :
-            if 'ssr://' in ssr:
-                print(ssr)
-                res_list.append(ssr)
-    ssr_links = res_list
+        if 'ssr://' in reg:
+            # print('767ssr',reg)
+            res_list.append(reg)
+    ssr_links = list(dict.fromkeys(res_list))
     # time.sleep(188)
     congfig_list = []
     congfig_err_list = []
@@ -668,135 +1115,13 @@ def get_config_informationurl1(local_port):
     proxies = [parse_ssr(link) for link in ssr_links]
 
 
-    print('get_config_informationurl1_ssr_links626节点', len(proxies))
-    #get_config_informationurl1_ssr_links626节点 20
+    print('get_config_informationurl2_ssr_links802节点', len(proxies))
+    #get_config_informationurl2_ssr_links626节点 20
     # cmd_on_color.printGre("配置文件已生成：clash_config_{type_}.yaml")
     return proxies
-def get_config_informationurl2(local_port):
-    # http = urllib3.PoolManager()
-    reg = ''
-    soup = ''
-    n = 1
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
-    while True:
-        print('使用连接2进行更新！')
-        try:
-            # html = http.request('GET', url2, timeout=29, headers=headers)
-            # link_url1_successful = '连接2成功！'
-            # print(link_url1_successful)
-            # break
-            if n > 2:
-                print('使用AI_all_auto代理88')
-                proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                reg = requests.get(url2, headers=headers, timeout=8, proxies=proxies)
-            else:
-                print('不使用代理')
-                reg = requests.get(url2, headers=headers, timeout=8)
 
-            link_url2_successful = '连接2成功！'
-            print(link_url2_successful)
-            # print(soup)
-            break
-        except Exception as err:
-            print(err)
-            print('连接2错误，2秒后重试！')
-            time.sleep(2)
-        # print(n)
-        if n >= 8:
-            # os.system('python SS1_ip2.py')
-            break
-        n += 1
-    # soup = BeautifulSoup(reg, 'html.parser')
-    # soup = reg.content
-    # 写入文件（二进制模式）
-    with open(f'clash_config_10805_temporary.yaml', "wb") as f:
-        for chunk in reg.iter_content(chunk_size=8192):
-            f.write(chunk)
 
-    def convert_clash_to_ssr(clash_config):
-        ssr_configs = []
-        # 处理代理列表
-        for proxy in clash_config.get('proxies', []):
-            # 提取必要信息
-            server = proxy.get('server', '')
-            port = proxy.get('port', 0)
-            password = proxy.get('password', '')
-            method = proxy.get('cipher', '')
-            obfs = proxy.get('obfs', '')
-            protocol = proxy.get('protocol', '')
 
-            # 提取可选参数
-            params = {
-                'obfsparam': proxy.get('obfs-param', ''),
-                'protoparam': proxy.get('protocol-param', '')
-            }
-
-            # 构建SSR配置
-            ssr_config = {
-                "name": f"{server}:{port}",
-                "type": "ssr",
-                "server": server,
-                "port": int(port),
-                "password": password,
-                "cipher": method,
-                "obfs": obfs,
-                "protocol": protocol,
-                "obfs-param": params.get('obfsparam', ''),
-                "protocol-param": params.get('protoparam', '')
-            }
-
-            ssr_configs.append(ssr_config)
-
-        return ssr_configs
-
-    # 读取Clash配置文件
-    # with open('clash_config_10805_temporary.yaml', 'r', encoding='utf-8') as f:
-    with open(f'clash_config_10805_temporary.yaml', 'r', encoding='utf-8') as f:
-        clash_config = yaml.safe_load(f)
-
-    # 转换配置
-    ssr_configs = convert_clash_to_ssr(clash_config)
-
-    # 打印结果
-    # for config in ssr_configs:
-    #     print(config)
-    print('get_config_informationurl2_ssr_links669节点', len(ssr_configs))
-    # time.sleep(188)
-    proxies = ssr_configs
-    return proxies
-    # congfig_list = []
-    # password = method = remarks = ''
-    # plugin = '"[]"'
-    # for vpn_config in res_list:
-    #     # ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTo2NzMyYzRiNC0yZTAwLTQyOGQtYWZjZi1jMzRhODM5NGUxMTY@nn.auozzjs.lol:40724#%E5%89%A9%E4%BD%99%E6%B5%81%E9%87%8F%EF%BC%9A63.68%20GB
-    #     # if 'type: ss' in vpn_config :
-    #     #     print(vpn_config)
-    #     server = vpn_config.split('#')[0].split('@')[-1].split(':')[0]  # nn.auozzjs.lol
-    #     server_port = vpn_config.split('#')[0].split('@')[-1].split(':')[1]  # 40724
-    #     if '?' in server_port:
-    #         server_port = server_port.split('?')[0]
-    #     ss_s = vpn_config.split('ss://')[-1].split('@')[0] + '=='  # YWVzLTI1Ni1jZmI6YW1hem9uc2tyMDU
-    #     # print(server, server_port, password, method, remarks)
-    #     b = bytes(ss_s, encoding='utf-8')
-    #     b64 = base64.b64decode(b).decode()
-    #     password = b64.split(':')[-1]
-    #     method = b64.split(':')[0]
-    #     remarks = vpn_config.split('#')[1]
-    #     # print(server, server_port, password, method,remarks)
-    #     congfig_ = '''
-    # "server": "{0}",
-    # "server_port": {1},
-    # "password": "{2}",
-    # "method": "{3}",
-    # "remarks": "{4}",
-    # "timeout": {5}
-    # '''.format(server, server_port, password, method, remarks, timeout)
-    #     congfig_list.append('{' + congfig_ + '}')
-    #     # congfig_list.append(congfig_)
-    # # configs = ','.join(congfig_list)
-    # # config = get_config(configs)
-    # # print(congfig_list)
-    # return congfig_list
 
 
 def get_config_informationurl3(local_port):
@@ -891,6 +1216,7 @@ def get_config_informationurl3(local_port):
     vpn_config_list = []
     ssr_links = []
     plugin = ''
+    res_list = list(dict.fromkeys(res_list))
     for i, vpn_config in enumerate(res_list):
         # print('vpn_config518', i,vpn_config)
         if 'ssr://' in str(vpn_config) :
@@ -901,103 +1227,23 @@ def get_config_informationurl3(local_port):
     return proxies
 
 
-def get_config_informationurl3_old():
-    http = urllib3.PoolManager()
-    html = ''
-    n = 1
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
-    while True:
-        print('使用连接3进行更新！')
-        try:
-            html = http.request('GET', url3, timeout=29, headers=headers)
-            link_url3_successful = '连接3成功！'
-            print(link_url3_successful)
-            break
-
-        except Exception as err:
-            print(err)
-            print('连接3错误，2秒后重试！')
-            time.sleep(2)
-        # print(n)
-        if n >= 2:
-            # os.system('python SS1_ip2.py')
-            break
-        n += 1
-
-    data = html.data.decode()
-    # code = BeautifulSoup(data, 'html.parser')
-    print('data365', data)
-    # time.sleep(99)
-    b = bytes(data, encoding='utf-8')
-    b64 = base64.b64decode(b).decode(errors='replace').split('\n')
-
-    # print(b64)
-    # with open(os.getcwd() + r'\ss.txt', 'w+', encoding='utf-8') as f:
-    #     f.write('')
-    # with open(os.getcwd() + r'\ssr1.txt', 'w+', encoding='utf-8') as f:
-    #     f.write('')
-    # f.close()
-    res_list = []
-    ss_txt_list = []
-    for i, sss in enumerate(b64):
-        # print(i)
-        # print(sss[0:3])
-        if 'ss:' in sss[0:3]:
-            # print(sss)
-            res_list.append(sss)
-            ss_txt_list.append('\n' + sss)
-            # with open(os.getcwd() + r'\ss.txt', 'w+', encoding='utf-8') as f:
-            #     f.write('\n' + sss)
-            # with open(os.getcwd() + r'\ssr1.txt', 'w+', encoding='utf-8') as f:
-            #     f.write('\n' + sss)
-            # f.close()
-    congfig_list = []
-    password = method = remarks = ''
-    for vpn_config in res_list:
-        # ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTo2NzMyYzRiNC0yZTAwLTQyOGQtYWZjZi1jMzRhODM5NGUxMTY@nn.auozzjs.lol:40724#%E5%89%A9%E4%BD%99%E6%B5%81%E9%87%8F%EF%BC%9A63.68%20GB
-        # if 'type: ss' in vpn_config :
-        server = vpn_config.split('#')[0].split('@')[-1].split(':')[0]  # nn.auozzjs.lol
-        server_port = vpn_config.split('#')[0].split('@')[-1].split(':')[1]  # 40724
-        ss_s = vpn_config.split('ss://')[-1].split('@')[0] + '=='  # YWVzLTI1Ni1jZmI6YW1hem9uc2tyMDU
-        # print(server, server_port, password, method, remarks)
-        b = bytes(ss_s, encoding='utf-8')
-        b64 = base64.b64decode(b).decode()
-        password = b64.split(':')[-1]
-        method = b64.split(':')[0]
-        remarks = vpn_config.split('#')[1].replace('\n', '')
-        # print(server, server_port, password, method,remarks)
-        congfig_ = '''
-      "server": "{0}",
-      "server_port": {1},
-      "password": "{2}",
-      "method": "{3}",
-      "plugin": "[]",
-      "plugin_opts": "[]",
-      "plugin_args": "[]",
-      "remarks": "{4}",
-      "timeout": 5
-    '''.format(server, server_port, password, method, remarks)
-        congfig_list.append('{' + congfig_ + '}')
-        # congfig_list.append(congfig_)
-    # configs = ','.join(congfig_list)
-    # config = get_config(configs)
-    return congfig_list
-
-
 def get_config_informationurl(local_port):
     congfig_list1 = []
     congfig_list2 = []
     congfig_list3 = []
     try:
         congfig_list1 = get_config_informationurl1(local_port)
+        pass
     except:
         traceback.print_exc()
     try:
         congfig_list2 = get_config_informationurl2(local_port)
+        pass
     except:
         traceback.print_exc()
     try:
         congfig_list3 = get_config_informationurl3(local_port)
+        pass
     except:
         traceback.print_exc()
 
@@ -1025,6 +1271,11 @@ def get_config_informationurl(local_port):
                 unique_proxies.append(proxy)
 
         proxies = unique_proxies
+        # for p in proxies:
+        #     print('1266p',p)
+            # name_p = p["name"]
+
+        # print('1265unique_proxies',unique_proxies)
         clash_config = {
             "mixed-port": 7890,
             "socks-port": local_port,  # 固定 SOCKS5 端口
@@ -1141,8 +1392,8 @@ def get_config_old(configs, local_port=10805):
 
 
 def main_proxy(local_port=10805):
-    download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-    download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port88.yaml", f"{type_}_clash_config_port88.yaml")
     time.sleep(2)
 
     # 启动监控进程
@@ -1188,8 +1439,8 @@ def main_proxy(local_port=10805):
                 break
             if n>18:
                 n = 0
-                download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-                download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
                 time.sleep(2)
 
                 pass
@@ -1278,178 +1529,6 @@ def SS1_old():
     return status, average_speed
 
 
-def run_exe_old(local_port, run_type):
-    # server_address, port, password = read_config()
-    success = ''
-    cmd = fr'{exe_name_path} -f {object_name}\{type_}_clash_config_port{local_port}.yaml'  # ssrlocal_clash_SSR1.exe -f clash_config.yaml
-    #f'{type_}_clash_config_port10805.yaml'
-    print('cmd1082', cmd)
-    object_name_output_log = fr'{object_name}/{type_}_output_log'
-    isExists = os.path.exists(object_name_output_log)
-    # 判断结果
-    if not isExists:
-        # 如果不存在则创建目录
-        os.makedirs(object_name_output_log)
-        print(object_name_output_log + ' 目录创建成功')
-    # 生成带时间戳的日志文件名
-    log_filename = f"{object_name_output_log}/{type_}_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-
-    # 首先将命令本身写入日志文件
-    with open(log_filename, 'a', encoding='utf-8') as log_file:
-        log_file.write(f"执行的命令: {cmd}\n\n")
-        log_file.flush()  # 立即写入文件
-
-        try:
-            print(f"正在启动 {exe_name}...")
-            log_file.write(f"正在启动 {exe_name}...\n")
-
-            # 启动进程并实时捕获输出
-            process = subprocess.Popen(cmd, shell=True,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT,
-                                       text=True,
-                                       encoding='utf-8',
-                                       errors='replace')
-            n = 0
-            while True:
-                pids = psutil.pids()
-                start_list = []
-                for pid in pids:
-                    try:
-                        p = psutil.Process(pid)
-                        if exe_name in p.name():
-                            start_list.append('未杀死！')
-                            pass
-                        else:
-                            pass
-                    except:
-                        pass
-
-                # my_file = Path(open_Shadowsocks1)
-                if len(start_list) != 0:
-                    # success = f'启动{exe_name}成功'
-                    # print(f'启动{exe_name}成功')
-                    break
-                else:
-                    print(f'启动{exe_name}失败！准备开始重启！')
-                    # win32api.ShellExecute(0, 'open', open_Shadowsocks1, '', '', 0)
-                    state = run_exe(local_port, run_type)
-                time.sleep(2)
-                if n >= 2:
-                    break
-                n += 1
-            # 实时读取输出并写入文件和打印到控制台
-            while True:
-                output = process.stdout.readline()
-                print('output1187',output)
-                if output == '' and process.poll() is not None:
-                    state = f'不可知的异常{process.poll()}，1 表示子进程已经终止'
-                    log_file.write(state)
-                    print('state1142', state)
-                    break
-                if output:
-                    # state_url, state_url_list = check_proxy_connection(local_port)
-                    # print('output.strip()719', output.strip())  # AddrInUse, message: "通常每个套接字地址(协议/网络地址/端口)只允许使用一次。" }
-                    print(f'{type_}==>>{output.strip()}')
-                    with open(object_name + r'\goflyway_status.txt', 'r+', encoding='utf-8') as f:
-                        goflyway_status = f.read()  # 可以上网    可以退出当前代理，优先选择 goflyway  goflyway_status == '可以上网'
-                    n8 = 0
-                    while True:
-                        pids = psutil.pids()
-                        start_list = []
-                        for pid in pids:
-                            try:
-                                p = psutil.Process(pid)
-                                if exe_name in p.name():
-                                    start_list.append('未杀死！')
-                                    pass
-                                else:
-                                    pass
-                            except:
-                                pass
-
-                        # my_file = Path(open_Shadowsocks1)
-                        if len(start_list) != 0:
-                            # success = f'启动{exe_name}成功'
-                            # print(f'启动{exe_name}成功')
-                            break
-                        else:
-                            print(f'启动{exe_name}失败！准备开始重启！')
-                            if '系统找不到指定的文件' in output.strip() and '.exe' in output.strip():
-                                win32api.MessageBox(None, f'系统找不到{exe_name_path}，请将该exe放入{object_name}内！然后点击确定', '来自FSO的警告', win32con.MB_ICONWARNING + win32con.MB_SERVICE_NOTIFICATION)
-                                # def popup():
-                                #     win32api.MessageBox(None, f'系统找不到{exe_name}，请检查！', '来自FSO的警告', win32con.MB_ICONWARNING + win32con.MB_SERVICE_NOTIFICATION)
-                                # threading.Thread(target=popup).start()
-                                state = '不可以上网'
-                                break
-                            if '系统找不到指定的文件' in output.strip() and '.json' in output.strip():
-                                cmd_on_color.printRed(f"系统找不到json")
-                                state = '不可以上网'
-                                break
-                            # win32api.ShellExecute(0, 'open', open_Shadowsocks1, '', '', 0)
-                            state = run_exe(local_port, run_type)
-                        time.sleep(2)
-                        if n8 >= 2:
-                            break
-                        n8 += 1
-                    if '只允许使用一次' in output.strip():
-                        with open(object_name + r'\ss1_err.txt', 'a+', encoding='utf-8') as f:
-                            f.write(f"{datetime.now().strftime('%Y%m%d_%H%M%S')}==>>{output.strip()}\n")
-                        if run_type == '所有':
-                            state = f'有一个在运行，不能同时运行2个'
-                            break
-                    if '系统找不到指定的文件' in output.strip() or 'json parse error' in output.strip() or 'expected array, boolean, null, number, object, or string' in output.strip():
-                        # if 'shadowsocks' not in output.strip() and 'INFO' not in output.strip() and 'build' not in output.strip():
-                        cmd_on_color.printRed('代理格式出错！重新写入格式')
-                        # config = get_config_informationurl()
-                        # config = get_config_informationurl1()
-                        # config = get_config_informationurl3()
-                        # with open(object_name + '\gui-config.json', 'w+', encoding='utf-8') as f:
-                        # with open(object_name + f'\{type_}_configs_port10805.json', 'w+', encoding='utf-8') as f:
-                        #     f.write(config.replace('88', '10805'))
-                        # with open(object_name + f'\{type_}_configs_port88.json', 'w+', encoding='utf-8') as f:
-                        #     f.write(config.replace('10805', '88'))
-
-                    # if '由于目标计算机积极拒绝' in output.strip() and state_url != '连接成功':#handler error: 由于目标计算机积极拒绝，无法连接。 (os error 10061)
-                    if '由于目标计算机积极拒绝' in output.strip() or '连接尝试失败' in output.strip() or '没有正确答复' in output.strip():  # handler error: 由于目标计算机积极拒绝，无法连接。 (os error 10061)
-                        ###由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败  #不可以上网
-                        # error: 你的主机中的软件中止了一个已建立的连接。 (os error 10053)  #这个是可以上网的
-                        state = '不可以上网'
-                        cmd_on_color.printRed(f'该代理不可上网，跳出！更换其它代理')
-                        break
-                    log_file.write(output)
-                    log_file.flush()  # 确保每次写入后立即保存到文件
-                # 删除多余的log
-                log_list = os.listdir(object_name_output_log)
-                for i, log_name in enumerate(log_list):
-                    if len(log_list) > 18:
-                        # if len(log_list) > 3:  # 测试
-                        if i < 18:  # 删除前29个
-                            # if i < 2:  # 测试
-                            print(f'开始删除log==>>{object_name_output_log}/{log_name}')
-                            log_file.write(f'开始删除log==>>{object_name_output_log}/{log_name}')
-                            try:
-                                os.remove(f'{object_name_output_log}/{log_name}')
-                            except:
-                                traceback.print_exc()
-            # state = '不可以上网'
-            print(f"{exe_name} 已正常退出")
-            log_file.write(f"{exe_name} 已正常退出\n")
-
-        except KeyboardInterrupt:
-            print("\n用户手动终止 (Ctrl+C)")
-            log_file.write("\n用户手动终止 (Ctrl+C)\n")
-        except Exception as e:
-            # with open(log_filename, 'a', encoding='utf-8') as file:
-            #     # 将错误信息写入文件
-            #     traceback.print_exc(file=file)
-            print(f"程序异常终止: {e}")
-            log_file.write(f"程序异常终止: {e}\n")
-        finally:
-            print("进程已结束")
-            log_file.write("进程已结束\n")
-            log_file.write(f"\n日志结束时间: {datetime.now()}\n")
-    return state
 
 
 def extract_and_decode_plugin_params(url_param):
@@ -1496,13 +1575,13 @@ if __name__ == "__main__":
     # os.system("taskkill /F /IM sslocal.exe")
     # main_proxy()
 
-    main_proxy_log()
+    # main_proxy_log()
     # start_exe()
     # sslocal1.exe -s "195.154.54.171:13355" -k "dongtaiwang.com" -b "127.0.0.1:10805" -m "aes-256-gcm"
     # sslocal1.exe -c configs.json
     # D:\客户端集合代理\SSR1\sslocal1.exe -c D:\客户端集合代理\SSR1\configs.json
 
     # get_config_informationurl1(10805)
-    # get_config_informationurl2(10805)
+    get_config_informationurl2(10805)
     # get_config_informationurl3(10805)
     # get_config_informationurl(10805)
