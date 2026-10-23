@@ -802,7 +802,7 @@ def get_config_informationurl(local_port):
             print('连接2成功，准备更新！')
     else:
         print('连接1成功，准备更新！')
-
+    res_list = list(dict.fromkeys(res_list))
     ssr_links = res_list
     # time.sleep(188)
     congfig_list = []
@@ -1076,8 +1076,8 @@ def get_config_old(configs, local_port=10806):
 
 
 def main_proxy(local_port=10806):
-    download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-    download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_clash_config_port88.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_clash_config_port88.yaml")
     time.sleep(2)
 
     # 启动监控进程
@@ -1124,8 +1124,8 @@ def main_proxy(local_port=10806):
 
             if n>18:
                 n = 0
-                download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-                download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_clash_config_port88.yaml")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_clash_config_port88.yaml")
                 time.sleep(2)
 
                 pass
