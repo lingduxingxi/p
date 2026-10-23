@@ -15,6 +15,7 @@ logging.captureWarnings(True)  # 强制取消证书验证警告
 # import func_timeout;from func_timeout import func_set_timeout
 # @func_set_timeout(99)
 def download_file(url=None, file_path=None, proxy_port=None, headers=None, data=None):
+    # return
     state = '下载失败，不可以上网'
     print('下载文件的地址为：' + str(url))
     # print('下载本地的路径为：' + str(file_path))
