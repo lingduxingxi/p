@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 
 import download_files
 
-res = requests.get('http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/').text
+res = requests.get('https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/').text
 
 
 soup = BeautifulSoup(res, 'html.parser')  # 文档对象
@@ -14,7 +14,7 @@ for tr in soup.find_all('tr'):
         name_py = tr.find('a').get('href')
         print(name_py)
         if '.py' in name_py and 'upload_node' not in name_py:
-            download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{name_py}", f"{name_py}")
+            download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{name_py}", f"{name_py}")
     except:
         pass
 print('更新py脚本完成！')
