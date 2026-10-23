@@ -472,7 +472,7 @@ def get_config_information(local_port):
 
 
 def main_proxy(local_port=8100):
-    download_file("http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/goflyway_config.ini", "goflyway_config.ini")
+    download_file("https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/goflyway_config.ini", "goflyway_config.ini")
     time.sleep(2)
 
     # 启动监控进程
@@ -511,7 +511,7 @@ def main_proxy(local_port=8100):
                 break
             if n > 18:
                 n = 0
-                download_file("http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/goflyway_config.ini", "goflyway_config.ini")
+                download_file("https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/goflyway_config.ini", "goflyway_config.ini")
                 time.sleep(2)
 
                 # time.sleep(88)
