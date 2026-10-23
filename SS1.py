@@ -37,13 +37,13 @@ today = time.strftime('%Y%m%d', time.localtime(time.time()))
 # import yaml
 logging.captureWarnings(True)  # 强制取消证书验证警告
 
-url1 = "https://www.cfmem.com/"  # ss
-# url1 = "https://clashgithub.com/"  # ss
+# url1 = "https://www.cfmem.com/"  # ss
+url1 = "https://clashgithub.com/"  # ss
 
 
 url2_list = ["https://ghfile.geekertao.top/https://raw.githubusercontent.com/ripaojiedian/freenode/refs/heads/main/sub",
              "https://ghfile.geekertao.top/https://raw.githubusercontent.com/abshare3/abshare3.github.io/main/README.md","https://ghfile.geekertao.top/https://raw.githubusercontent.com/mksshare/mksshare.github.io/main/README.md","https://ghfile.geekertao.top/https://raw.githubusercontent.com/hello-world-1989/v2-sub/refs/heads/main/end-gfw-together-ss",
-             "https://ghfile.geekertao.top/https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt",
+             # "https://ghfile.geekertao.top/https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt",
              "https://ghfile.geekertao.top/https://raw.githubusercontent.com/nodesfree/clashnode/refs/heads/main/v2ray.txt",
              "https://ghfile.geekertao.top/https://raw.githubusercontent.com/shabane/kamaji/refs/heads/master/hub/ss.txt",
              f"https://yoyapai.com/mianfeijiedian/{time.strftime('%Y%m%d', time.localtime(time.time()))}-ssr-v2rayvpnjiedian-yoyapai.com.txt",
@@ -53,7 +53,7 @@ url2_source_list = ["https://raw.githubusercontent.com/ripaojiedian/freenode/ref
                     "https://github.com/abshare3/abshare3.github.io",
                     "https://github.com/mksshare/mksshare.github.io",
                     "https://raw.githubusercontent.com/hello-world-1989/v2-sub/refs/heads/main/end-gfw-together-ss",
-                    "https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt",
+                    # "https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt",
                     "https://raw.githubusercontent.com/nodesfree/clashnode/refs/heads/main/v2ray.txt",
                     "https://raw.githubusercontent.com/shabane/kamaji/refs/heads/master/hub/ss.txt",
                     f""]#备用 可筛选可用的ss   原生网站
@@ -576,96 +576,372 @@ def parse_auth(auth):
 # ================= SS URL 解析 =================
 import re
 
+
+
+
+
 def parse_ss_url(ss_url):
-    try:
-        ss_url = ss_url.strip().strip("'\"")
-        if not ss_url.startswith("ss://"):
-            return None
-        ss_url = ss_url[5:]
+    """
+    解析 Shadowsocks ss:// URL。
 
-        # ---------- remark ----------
-        remark = ""
-        if "#" in ss_url:
-            ss_url, remark = ss_url.split("#", 1)
-            remark = unquote(remark)
+    支持：
+      1. ss://BASE64(method:password@server:port)#remark
+      2. ss://BASE64(method:password)@server:port#remark
+      3. ss://method:password@server:port#remark
+      4. IPv4、IPv6、域名及 IDN 域名
+      5. URL 查询参数、plugin 参数和备注
+      6. Shadowsocks 2022 多段密码
+      7. 认证字段中的 URL 百分号编码
 
-        # ---------- plugin ----------
-        plugin = None
-        if "?plugin=" in ss_url:
-            ss_url, plugin = ss_url.split("?plugin=", 1)
-            plugin = unquote(plugin)
+    注意：
+      - 自动拒绝 VLESS、VMess 等非 SS 协议格式。
+      - 不会把 JSON 配置内容误识别为 method/password。
+      - 解析失败返回 None，并打印原因。
+    """
+    import base64
+    import binascii
+    import ipaddress
+    import json
+    import re
+    from urllib.parse import unquote, parse_qs
 
-        # ---------- Base64整段 ----------
-        if "@" not in ss_url:
-            decoded = safe_b64decode_str(ss_url)
-            if not decoded:
-                return None
-            ss_url = decoded
-
-        # ---------- 拆分 auth 和 server ----------
-        if "@" not in ss_url:
-            return None
-        auth_part, server_part = ss_url.split("@", 1)
-
-        # ⭐⭐⭐ 修改：仅当 auth_part 为纯 base64 字符时才解码 ⭐⭐⭐
-        if ":" not in auth_part:
-            # 检查是否只包含标准 base64 字符（允许填充 =）
-            if re.match(r'^[A-Za-z0-9+/=]+$', auth_part):
-                decoded = safe_b64decode_str(auth_part)
-                if decoded and ":" in decoded:
-                    auth_part = decoded
-            # 否则直接跳过，auth_part 保持原样（如 UUID 字符串）
-
-        # ---------- 解析 auth ----------
-        if ":" in auth_part:
-            method, password = auth_part.split(":", 1)
-            if method not in VALID_METHODS:
-                password = method + ":" + password
-                method = None
-        else:
-            method = None
-            password = auth_part
-
-        # ---------- server ----------
-        server_part = server_part.split("/")[0]
-        if server_part.startswith("["):
-            end = server_part.index("]")
-            server = server_part[1:end]
-            port = server_part[end + 2:]
-        else:
-            parts = server_part.rsplit(":", 1)
-            if len(parts) != 2:
-                return None
-            server, port = parts
-
-        # ---------- 自动 method ----------
-        if method is None:
-            for m in DEFAULT_METHODS:
-                if validate_params(m, password, server, port):
-                    method = m
-                    break
-
-        # ---------- 最终验证 ----------
-        if not validate_params(method, password, server, port):
-            return None
-
-        return {
-            "method": method,
-            "password": password,
-            "server": server,
-            "port": port,
-            "remark": remark,
-            "plugin": plugin
-        }
-
-    except Exception as e:
-        print("解析错误:", e)
-        traceback.print_exc()
+    def fail(reason):
+        print(f"无法解析 SS URL：{reason}")
         return None
 
+    def decode_base64_variants(value):
+        """兼容标准 Base64、URL-safe Base64 和缺少 padding。"""
+        if not isinstance(value, str):
+            return None
+
+        value = unquote(value.strip())
+        if not value:
+            return None
+
+        candidates = [
+            value,
+            value.replace("-", "+").replace("_", "/"),
+        ]
+
+        seen = set()
+
+        for candidate in candidates:
+            candidate = re.sub(r"\s+", "", candidate)
+
+            if not candidate or candidate in seen:
+                continue
+            seen.add(candidate)
+
+            # 标准 Base64 长度模 4 为 1 时无效。
+            if len(candidate) % 4 == 1:
+                continue
+
+            padded = candidate + "=" * ((-len(candidate)) % 4)
+
+            try:
+                raw = base64.b64decode(
+                    padded.encode("ascii"),
+                    validate=True,
+                )
+                text = raw.decode("utf-8")
+                if text:
+                    return text
+            except (
+                ValueError,
+                UnicodeError,
+                binascii.Error,
+            ):
+                continue
+
+        return None
+
+    def normalize_host(host):
+        """验证 IP 地址，或把国际化域名转换为 ASCII。"""
+        host = host.strip()
+
+        if not host:
+            raise ValueError("服务器地址为空")
+
+        try:
+            return str(ipaddress.ip_address(host))
+        except ValueError:
+            pass
+
+        if any(ch.isspace() for ch in host):
+            raise ValueError("服务器域名包含空白字符")
+
+        if any(ch in host for ch in "/?#@[]"):
+            raise ValueError("服务器域名包含非法字符")
+
+        try:
+            ascii_host = host.rstrip(".").encode("idna").decode("ascii")
+        except UnicodeError as exc:
+            raise ValueError(f"域名 IDNA 转换失败：{host}") from exc
+
+        if not ascii_host or len(ascii_host) > 253:
+            raise ValueError("服务器域名长度无效")
+
+        for label in ascii_host.split("."):
+            if (
+                not label
+                or len(label) > 63
+                or label.startswith("-")
+                or label.endswith("-")
+                or not re.fullmatch(r"[A-Za-z0-9-]+", label)
+            ):
+                raise ValueError(f"服务器域名格式无效：{host}")
+
+        return ascii_host.lower()
+
+    def parse_endpoint(endpoint):
+        """解析 host:port，兼容 [IPv6]:port。"""
+        endpoint = endpoint.strip().split("/", 1)[0]
+
+        if not endpoint:
+            raise ValueError("缺少服务器地址和端口")
+
+        if endpoint.startswith("["):
+            match = re.fullmatch(r"\[([^\]]+)\]:(\d+)", endpoint)
+            if not match:
+                raise ValueError(
+                    "IPv6 格式无效，应为 [IPv6]:端口"
+                )
+
+            host, port_text = match.groups()
+
+            try:
+                ipaddress.IPv6Address(host)
+            except ValueError as exc:
+                raise ValueError(f"无效的 IPv6 地址：{host}") from exc
+        else:
+            if endpoint.count(":") != 1:
+                raise ValueError(
+                    "服务器端点格式无效；IPv6 必须使用 [IPv6]:端口"
+                )
+
+            host, port_text = endpoint.rsplit(":", 1)
+
+        if not port_text.isdigit():
+            raise ValueError(f"端口不是有效整数：{port_text}")
+
+        port = int(port_text)
+        if not 1 <= port <= 65535:
+            raise ValueError(f"端口超出范围：{port}")
+
+        return normalize_host(host), port
+
+    def split_auth(auth):
+        """
+        拆分 method:password。
+        先进行百分号解码，再只按第一个冒号拆分。
+        """
+        if not isinstance(auth, str):
+            return None, None
+
+        auth = unquote(auth.strip())
+
+        if ":" not in auth:
+            return None, None
+
+        method, password = auth.split(":", 1)
+        method = method.strip()
+        password = password.strip()
+
+        if not method or not password:
+            return None, None
+
+        # 关键防护：加密方式必须是算法名称，不能是 JSON 片段。
+        # 例如 {"add"、"method" 等均不能通过。
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", method):
+            return None, None
+
+        # 避免将明显的 JSON 字段或协议配置误当算法。
+        if method.lower() in {
+            "add", "id", "net", "tls", "v", "ps",
+            "port", "host", "path", "sni", "type",
+        }:
+            return None, None
+
+        return method, password
+
+    def looks_like_other_protocol(decoded):
+        """
+        识别被误塞进 SS 链接的 VLESS/VMess 等 JSON。
+        即使 JSON 后面附加了乱码，也不能继续按密码解析。
+        """
+        if not isinstance(decoded, str):
+            return False
+
+        text = decoded.lstrip("\ufeff \t\r\n")
+
+        if not text.startswith("{"):
+            return False
+
+        # 优先判断完整 JSON。
+        try:
+            obj = json.loads(text)
+            if isinstance(obj, dict):
+                protocol_keys = {
+                    "add", "id", "net", "tls", "v",
+                    "ps", "scy", "sni", "alpn",
+                }
+                if protocol_keys.intersection(obj.keys()):
+                    return True
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # 部分错误订阅会在 JSON 后面拼接二进制或乱码。
+        # 即使完整 JSON 解析失败，只要开头明显是 JSON 节点字段，
+        # 仍然拒绝，避免把 JSON 的冒号当作 method/password 分隔符。
+        if re.match(
+            r'^\{\s*"(?:add|id|net|tls|v|ps|scy|sni|alpn)"\s*:',
+            text,
+            re.IGNORECASE,
+        ):
+            return True
+
+        return False
+
+    if not isinstance(ss_url, str):
+        return fail("输入不是字符串")
+
+    ss_url = ss_url.strip()
+
+    if not ss_url.lower().startswith("ss://"):
+        return fail("链接不是 ss:// 格式")
+
+    body = ss_url[5:].strip()
+    if not body:
+        return fail("ss:// 后没有内容")
+
+    # 分离备注。
+    remark = ""
+    if "#" in body:
+        body, fragment = body.split("#", 1)
+        remark = unquote(fragment)
+
+    # 分离查询参数。
+    query = ""
+    if "?" in body:
+        body, query = body.split("?", 1)
+
+    plugin = ""
+    if query:
+        try:
+            params = parse_qs(query, keep_blank_values=True)
+            plugin = params.get("plugin", [""])[0]
+        except Exception:
+            plugin = ""
+
+    body = body.strip()
+    if not body:
+        return fail("链接主体为空")
+
+    method = None
+    password = None
+    server = None
+    port = None
+
+    if "@" in body:
+        # 格式：
+        # ss://BASE64(method:password)@server:port
+        # ss://method:password@server:port
+        auth_part, endpoint = body.rsplit("@", 1)
+
+        if not endpoint.strip():
+            return fail("缺少服务器地址和端口")
+
+        auth_part = auth_part.strip()
+
+        # 先尝试明文 method:password。
+        direct_method, direct_password = split_auth(auth_part)
+
+        if direct_method and direct_password:
+            method = direct_method
+            password = direct_password
+        else:
+            # 再尝试 Base64 编码的认证信息。
+            decoded_auth = decode_base64_variants(auth_part)
+
+            if decoded_auth is None:
+                return fail("认证信息不是有效的 method:password 或 Base64")
+
+            # 核心修复：先检查是否是其他协议的 JSON 配置。
+            # 不能再从 {"add":"93.114... 中拆出 method/password。
+            if looks_like_other_protocol(decoded_auth):
+                return fail(
+                    "检测到 VLESS/VMess 等非 Shadowsocks JSON 节点，"
+                    "已拒绝错误解析"
+                )
+
+            decoded_method, decoded_password = split_auth(decoded_auth)
+
+            if not decoded_method or not decoded_password:
+                return fail(
+                    "Base64 解码内容不是有效的 Shadowsocks method:password"
+                )
+
+            method = decoded_method
+            password = decoded_password
+
+        try:
+            server, port = parse_endpoint(endpoint)
+        except ValueError as exc:
+            return fail(str(exc))
+
+    else:
+        # 格式：
+        # ss://BASE64(method:password@server:port)
+        decoded = decode_base64_variants(body)
+
+        if decoded is None:
+            return fail("整个链接主体无法进行 Base64 解码")
+
+        decoded = decoded.strip()
+
+        if looks_like_other_protocol(decoded):
+            return fail(
+                "检测到 VLESS/VMess 等非 Shadowsocks JSON 节点，"
+                "不能作为 SS 节点返回"
+            )
+
+        if "@" not in decoded:
+            return fail("Base64 解码内容缺少 @ 分隔符")
+
+        auth_part, endpoint = decoded.rsplit("@", 1)
+
+        method, password = split_auth(auth_part)
+        if not method or not password:
+            return fail(
+                "Base64 解码后的认证信息不是有效的 method:password"
+            )
+
+        try:
+            server, port = parse_endpoint(endpoint)
+        except ValueError as exc:
+            return fail(str(exc))
+
+    if not method:
+        return fail("加密方式为空")
+
+    if not password:
+        return fail("密码为空")
+
+    if not server or not port:
+        return fail("服务器地址或端口缺失")
+
+    return {
+        "method": method,
+        "password": password,
+        "server": server,
+        "port": port,
+        "remark": remark,
+        "plugin": plugin,
+    }
 
 
-def parse_ss_url_old(ss_url):
+
+def parse_ss_url_old2(ss_url):
 
     try:
 
@@ -934,47 +1210,50 @@ def get_config_informationurl1(timeout=2):
     proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
     while True:
+        today = time.strftime('%Y%m%d', time.localtime(time.time()))
+        yesterday = time.strftime('%Y%m%d', time.localtime(time.time() - 86400))
         print('使用连接1进行更新！')
         try:
             if n > 2:
                 print('使用AI_all_auto代理88')
 
-                webpage = requests.get(url1, headers=headers, timeout=8, proxies=proxies)
+                webpage = requests.get(url1 + f'clashnode-{today}.html', headers=headers, timeout=8, proxies=proxies)
                 data = webpage.content
                 # data = html.data.decode()
                 code = BeautifulSoup(data, 'html.parser')
                 # print(code)
 
-                for i, url_vpn in enumerate(code.find_all('h2')):
-                    # print('url_vpn22',url_vpn)
+                for i, url_vpn in enumerate(code.find_all('pre')):
+                    print('url_vpn22',url_vpn)
                     if i == 0:
                         href_url = url_vpn.find('a').get('href')
-                        print('href_url528', href_url)
+                        print('href_url952', href_url)
                         # time.sleep(99)
                         # html = http.request('GET', href_url, timeout=8, headers=headers,proxies=proxies)
                         # data = html.data.decode()
                         data = requests.get(href_url, headers=headers, timeout=8, proxies=proxies).text
                         code_vpn = BeautifulSoup(data, 'html.parser')
             else:
-                print('不使用代理')
-                webpage = requests.get(url1, headers=headers, timeout=8)
+                print('959不使用代理')
+                webpage = requests.get(url1 + f'clashnode-{today}.html', headers=headers, timeout=8)
                 data = webpage.content
                 # data = html.data.decode()
                 code = BeautifulSoup(data, 'html.parser')
                 # print(code)
                 yaml_vpn_url = ''
-                code_vpn = ''
-                ss = ''
-                for i, url_vpn in enumerate(code.find_all('h2')):
-                    # print('url_vpn22',url_vpn)
-                    if i == 0:
-                        href_url = url_vpn.find('a').get('href')
-                        print('href_url528', href_url)
-                        # time.sleep(99)
-                        # html = http.request('GET', href_url, timeout=8, headers=headers)
-                        # data = html.data.decode()
-                        data = requests.get(href_url, headers=headers, timeout=8, proxies=proxies).text
-                        code_vpn = BeautifulSoup(data, 'html.parser')
+                code_vpn = code.find('pre').text
+                # ss = ''
+                print('968code_vpn',code_vpn)
+                # for i, url_vpn in enumerate(code.find_all('pre')):
+                #     print('969url_vpn',url_vpn)
+                #     if i == 0:
+                #         href_url = url_vpn.find('a').get('href')
+                #         print('href_url528', href_url)
+                #         # time.sleep(99)
+                #         # html = http.request('GET', href_url, timeout=8, headers=headers)
+                #         # data = html.data.decode()
+                #         data = requests.get(href_url, headers=headers, timeout=8, proxies=proxies).text
+                #         code_vpn = BeautifulSoup(data, 'html.parser')
             link_url1_successful = '连接1成功！'
             print(link_url1_successful)
             break
@@ -1016,6 +1295,7 @@ def get_config_informationurl1(timeout=2):
     congfig_list = []
     # print(res_list)
     plugin = ''
+    res_list = list(dict.fromkeys(res_list))
     for vpn_config in res_list :#ss://YWVzLTI1Ni1jZmI6YW1hem9uc2tyMDU=@35.90.10.174:443#%F0%9F%87%BA%F0%9F%87%B8_US_%E7%BE%8E%E5%9B%BD
         # if 'type: ss' in vpn_config :
         #     server = vpn_config.split('#')[0].split('@')[-1].split(':')[0]
@@ -1032,7 +1312,7 @@ def get_config_informationurl1(timeout=2):
                 method = result['method'].rstrip()
                 password = result['password'].rstrip()
                 server = result['server'].rstrip()
-                server_port = result['port'].rstrip()
+                server_port = result['port']
                 remarks = result['remark'].rstrip()
                 # print("加密方法:", result['method'])
                 # print("密码:", result['password'])
@@ -1092,7 +1372,7 @@ def get_config_informationurl1(timeout=2):
 
 
 
-def get_config_informationurl2(timeout=2):
+def get_config_informationurl2(timeout=2,day="[2026-10-22]"):
     # http = urllib3.PoolManager()
     reg = ''
     soup = ''
@@ -1109,7 +1389,7 @@ def get_config_informationurl2(timeout=2):
     proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
     for i,url2 in enumerate(url2_list):
         if 'hello-world-1989' in url2 or 'kamaji' in url2 or 'yoyapai' in url2:
-            res_list+= url22_get_ss_list(headers,url2,url2_source_list[i])
+            res_list+= url22_get_ss_list(headers,url2,url2_source_list[i],day)
         else:
             while True:
                 print(f'使用连接2:{url2}进行更新！')
@@ -1130,10 +1410,13 @@ def get_config_informationurl2(timeout=2):
                         except:
                             traceback.print_exc()
                             reg = requests.get(url2_source_list[i], headers=headers, timeout=8).text
-                    link_url2_successful = '连接2成功！'
-                    print(link_url2_successful)
-                    # print(soup)
-                    break
+                    if 'DOCTYPE html' in reg:
+                        pass
+                    else:
+                        link_url2_successful = '连接2成功！'
+                        print(link_url2_successful)
+                        # print(soup)
+                        break
                 except Exception as err:
                     print(err)
                     print('连接2错误，2秒后重试！')
@@ -1203,16 +1486,41 @@ def get_config_informationurl2(timeout=2):
                                 soup = requests.get(url2_sub, headers=headers, timeout=8, proxies=proxies).text
                             break
 
-
                 try:
-                    b = bytes(str(soup), encoding='utf-8')
-                    b64 = base64.b64decode(b).decode().split('\n')
-                    for i,sss in enumerate(b64):
-                        if 'ss:' in sss[0:3] :
-                            res_list.append(sss)
-                except:
+                    # print('1211soup', soup)
+                    text = str(soup).strip()
+
+                    # 1) 明显是 Cloudflare / HTML 错误页，直接跳过，不尝试 Base64 解码
+                    if ('<!DOCTYPE html>' in text
+                            or '<html' in text.lower()
+                            or 'cloudflare' in text.lower()
+                            or 'Access denied' in text):
+                        cmd_on_color.printRed('订阅返回的是 HTML 错误页（可能被 Cloudflare 拦截），跳过此源')
+                        res_list += []  # 不追加任何东西
+                    else:
+                        # 2) 清理 Base64 中的空白字符，再严格解码
+                        b64_text = re.sub(r'\s+', '', text)
+
+                        # 3) 严格校验字符集，不是合法 Base64 就跳过
+                        if not re.match(r'^[A-Za-z0-9+/=_-]+$', b64_text):
+                            cmd_on_color.printRed('返回内容不是合法 Base64，跳过')
+                        else:
+                            try:
+                                decoded_bytes = base64.b64decode(b64_text + '=' * (-len(b64_text) % 4))
+                                # 关键：用 errors='replace' 或先尝试 utf-8，再 latin1
+                                try:
+                                    decoded = decoded_bytes.decode('utf-8')
+                                except UnicodeDecodeError:
+                                    decoded = decoded_bytes.decode('latin1')
+
+                                for sss in decoded.split('\n'):
+                                    if sss[:3] == 'ss:':
+                                        res_list.append(sss)
+                            except Exception as e:
+                                cmd_on_color.printRed(f'Base64 解码失败，跳过：{e}')
+                except Exception:
                     traceback.print_exc()
-                    pass
+    res_list = list(dict.fromkeys(res_list))
     for vpn_config in res_list :
         # server = vpn_config.split('#')[0].split('@')[-1].split(':')[0].rstrip() #nn.auozzjs.lol
         # server_port = vpn_config.split('#')[0].split('@')[-1].split(':')[1].rstrip() #40724
@@ -1228,11 +1536,11 @@ def get_config_informationurl2(timeout=2):
         # # print(server, server_port, password, method,remarks)
         print('vpn_config1137',vpn_config)
         result = parse_ss_url(vpn_config)
-        if result:
+        if result and 'chacha20-poly1305' not in result['method'] and 'blake3-aes-256-gcm' not in result['method']:
             method = result['method'].rstrip()
             password = result['password'].rstrip()
             server = result['server'].rstrip()
-            server_port = result['port'].rstrip()
+            server_port = result['port']
             remarks = result['remark'].rstrip()
 
             print("1146加密方法:", result['method'])
@@ -1380,6 +1688,7 @@ def get_config_informationurl3(timeout=2):
     # print('res_list518',res_list)
     vpn_config_list = []
     plugin = ''
+    res_list = list(dict.fromkeys(res_list))
     for i,vpn_config in enumerate(res_list):
         # print('vpn_config518', i,vpn_config)
         # if 'ss://' in str(vpn_config) and 'vless://' not in vpn_config and 'vmess://' not in vpn_config:
@@ -1392,7 +1701,7 @@ def get_config_informationurl3(timeout=2):
                 method = result['method'].rstrip()
                 password = result['password'].rstrip()
                 server = result['server'].rstrip()
-                server_port = result['port'].rstrip()
+                server_port = result['port']
                 remarks = result['remark'].rstrip()
                 print("加密方法:", result['method'])
                 print("密码:", result['password'])
@@ -1463,100 +1772,21 @@ def get_config_informationurl3(timeout=2):
     return congfig_list
 
 
-def get_config_informationurl3_old():
-    http = urllib3.PoolManager()
-    html = ''
-    n = 1
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
-    while True:
-        print('使用连接3进行更新！')
-        try:
-            html = http.request('GET', url3, timeout=29, headers=headers)
-            link_url3_successful = '连接3成功！'
-            print(link_url3_successful)
-            break
 
-        except Exception as err:
-            print(err)
-            print('连接3错误，2秒后重试！')
-            time.sleep(2)
-        # print(n)
-        if n >= 2:
-            # os.system('python SS1_ip2.py')
-            break
-        n += 1
 
-    data = html.data.decode()
-    # code = BeautifulSoup(data, 'html.parser')
-    print('data365',data)
-    # time.sleep(99)
-    b = bytes(data, encoding='utf-8')
-    b64 = base64.b64decode(b).decode(errors='replace').split('\n')
-
-    # print(b64)
-    # with open(os.getcwd() + r'\ss.txt', 'w+', encoding='utf-8') as f:
-    #     f.write('')
-    # with open(os.getcwd() + r'\ss1.txt', 'w+', encoding='utf-8') as f:
-    #     f.write('')
-    # f.close()
-    res_list = []
-    ss_txt_list = []
-    for i,sss in enumerate(b64):
-        # print(i)
-        # print(sss[0:3])
-        if 'ss:' in sss[0:3] :
-            # print(sss)
-            res_list.append(sss)
-            ss_txt_list.append('\n' + sss)
-            # with open(os.getcwd() + r'\ss.txt', 'w+', encoding='utf-8') as f:
-            #     f.write('\n' + sss)
-            # with open(os.getcwd() + r'\ss1.txt', 'w+', encoding='utf-8') as f:
-            #     f.write('\n' + sss)
-            # f.close()
-    congfig_list = []
-    password= method= remarks = ''
-    for vpn_config in res_list :
-        #ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTo2NzMyYzRiNC0yZTAwLTQyOGQtYWZjZi1jMzRhODM5NGUxMTY@nn.auozzjs.lol:40724#%E5%89%A9%E4%BD%99%E6%B5%81%E9%87%8F%EF%BC%9A63.68%20GB
-        # if 'type: ss' in vpn_config :
-            server = vpn_config.split('#')[0].split('@')[-1].split(':')[0]#nn.auozzjs.lol
-            server_port = vpn_config.split('#')[0].split('@')[-1].split(':')[1]#40724
-            ss_s = vpn_config.split('ss://')[-1].split('@')[0] + '=='#YWVzLTI1Ni1jZmI6YW1hem9uc2tyMDU
-            # print(server, server_port, password, method, remarks)
-            b = bytes(ss_s, encoding='utf-8')
-            b64 = base64.b64decode(b).decode()
-            password = b64.split(':')[-1]
-            method = b64.split(':')[0]
-            remarks = vpn_config.split('#')[1].replace('\n','')
-            # print(server, server_port, password, method,remarks)
-            congfig_ = '''
-      "server": "{0}",
-      "server_port": {1},
-      "password": "{2}",
-      "method": "{3}",
-      "plugin": "[]",
-      "plugin_opts": "[]",
-      "plugin_args": "[]",
-      "remarks": "{4}",
-      "timeout": 5
-    '''.format(server, server_port, password, method,remarks)
-            congfig_list.append('{' + congfig_ + '}')
-            # congfig_list.append(congfig_)
-    # configs = ','.join(congfig_list)
-    # config = get_config(configs)
-    return congfig_list
-
-def get_config_informationurl(local_port=10801):
+def get_config_informationurl(local_port=10801,day=None):
     congfig_list1 = []
     congfig_list2 = []
     congfig_list3 = []
     try:
 
-        congfig_list1 = get_config_informationurl1()
+        # congfig_list1 = get_config_informationurl1()
         pass
     except:
         traceback.print_exc()
     try:
-        congfig_list2 = get_config_informationurl2()
+        congfig_list2 = get_config_informationurl2(day=day)
+        pass
     except:
         traceback.print_exc()
     try:
@@ -1659,8 +1889,8 @@ def get_config_old(configs,local_port=10801):
 
 
 def main_proxy(local_port=10801):
-    download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port{local_port}.json", f"{type_}_configs_port{local_port}.json")
-    download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json", f"{type_}_configs_port{local_port}.json")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -1678,7 +1908,16 @@ def main_proxy(local_port=10801):
                 if n<=2:
                     show_notification(f"端口 {local_port} 链接错误！准备更新配置", f"不可以上网！【第{n+1}次检测)】", "error")
                 print(f'代理错误，疑似代理或IP配置有错误？开始重新获取最新IP配置=={type_}')
-                config = get_config_informationurl()
+                from datetime import date, timedelta
+
+                today = date.today()
+                yesterday = today - timedelta(days=1)
+                day = today.strftime("[%Y-%m-%d]")
+                if n==0:
+                    day = today.strftime("[%Y-%m-%d]")
+                if n==1:
+                    day = yesterday.strftime("[%Y-%m-%d]")
+                config = get_config_informationurl(day=day)
                 if config:
                     with open(object_name + fr'\{type_}_configs_port{local_port}.json', 'w+', encoding='utf-8') as f:
                         f.write(config.replace('88',str(local_port)))
@@ -1700,8 +1939,8 @@ def main_proxy(local_port=10801):
             print('1599n============',n)
             if n>18:
                 n = 0
-                download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port{local_port}.json", f"{type_}_configs_port{local_port}.json")
-                download_file(f"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json", f"{type_}_configs_port{local_port}.json")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
                 time.sleep(2)
 
                 pass
@@ -2233,7 +2472,7 @@ def extract_and_decode_plugin_params(url_param):
     # print(plugin_name,plugin_params)
     return plugin_name,plugin_params
 
-def url22_get_ss_list(headers,url22,url22_source):
+def url22_get_ss_list(headers,url22,url22_source,day):
     soup = ''
     n22 = 0
     while True:
@@ -2244,11 +2483,14 @@ def url22_get_ss_list(headers,url22,url22_source):
                 proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                 soup = requests.get(url22_source, headers=headers, timeout=8, proxies=proxies).text.rstrip()
             else:
-                print('不使用代理')
+                print('2563不使用代理')
                 soup = requests.get(url22, headers=headers, timeout=8).text.rstrip()
-            link_url1_successful = f'连接{url22}成功！'
-            print(link_url1_successful)
-            break
+            if 'DOCTYPE html' in  soup:
+                pass
+            else:
+                link_url1_successful = f'连接{url22}成功！'
+                print(link_url1_successful)
+                break
 
         except Exception as err:
             print(err)
@@ -2260,10 +2502,19 @@ def url22_get_ss_list(headers,url22,url22_source):
         n22 += 1
     # print('soup1361',soup)
     ss_list = []
-    for ss in soup.split('\n'):
-        if 'ss:' in ss[0:3] :
-            # print('ss2173',ss)
-            ss_list.append(ss)
+    if 'kamaji' in url22:
+
+        for ss in soup.split('\n'):
+            if 'ss:' in ss[0:3] :
+                # if yesterday.strftime("[%Y-%m-%d]") in ss or today.strftime("[%Y-%m-%d]") in ss:
+                if day in ss:
+                    # print('ss2173',ss)
+                    ss_list.append(ss)
+    else:
+        for ss in soup.split('\n'):
+            if 'ss:' in ss[0:3] :
+                # print('ss2173',ss)
+                ss_list.append(ss)
     # print('ss_list1361',ss_list)
     return ss_list
 
