@@ -315,6 +315,7 @@ def get_config_informationurl(local_port):
     backup_average_speed_list = []
     average_speed_list = []
     link_err_list = []
+    node_link_list = list(dict.fromkeys(node_link_list))
     for i, original_link in enumerate(node_link_list):
         # if i==3 :break #测试
         link = unescape_vless_link(original_link)
@@ -637,9 +638,9 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def main_proxy(local_port=10999):
-    download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port{local_port}.json",
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
                                  f"{type_}_configs_port{local_port}.json")
-    download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -793,9 +794,9 @@ def main_proxy(local_port=10999):
             kill_exe()  # exe_name, exe_name_path, object_name
             if n > 18:
                 n = 0
-                download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port{local_port}.json",
+                download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
                                              f"{type_}_configs_port{local_port}.json")
-                download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+                download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
                 time.sleep(2)
 
                 pass
