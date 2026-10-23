@@ -503,7 +503,7 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
             elif 'json parse error' in line or 'json: cannot' in line or 'expected array, boolean' in line:
                 update_state(800, "配置缺失，不可以上网", "output")
                 return '配置缺失'
-            elif 'cipher not supported' in line:
+            elif 'cipher not supported' in line or 'unsupported method' in line or 'invalid iPSK encoding' in line:
                 with network_status['lock']:
                     network_status['alive'] = False
                 update_state(108, "不支持的加密模式，不可以上网", "output")
@@ -1027,6 +1027,6 @@ def _async_log_clean(base_dir):
 
 if __name__ == "__main__":
     pass
-    # download_file("http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/goflyway_config.ini", "goflyway_config.ini")
+    # download_file("https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/goflyway_config.ini", "goflyway_config.ini")
     # download_file2(f"https://ghfile.geekertao.top/https://raw.githubusercontent.com/PuddinCat/BestClash/refs/heads/main/proxies.yaml", "clash2.yaml")
     # get_clash1()
