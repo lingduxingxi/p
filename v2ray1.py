@@ -479,6 +479,7 @@ def get_config_informationurl1(local_port):
                 # print('sss221',sss)
                 # print(sss)
                 node_links.append(sss)
+        node_links = list(dict.fromkeys(node_links))
         print(f'get_config_informationurl1共有节点数目为：{len(node_links)}')
         return node_links
 
@@ -835,9 +836,9 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def main_proxy(local_port=10822):
-    download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port{local_port}.json",
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
                                  f"{type_}_configs_port{local_port}.json")
-    download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -992,9 +993,9 @@ def main_proxy(local_port=10822):
             kill_exe()  # exe_name, exe_name_path, object_name
             if n>18:
                 n = 0
-                download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port{local_port}.json",
+                download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
                                              f"{type_}_configs_port{local_port}.json")
-                download_files.download_file(fr"http://interesting-sky.china-vo.org/telescope_astronomical/data_astronomical/astronomical_data/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+                download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
                 time.sleep(2)
 
                 pass
@@ -1672,7 +1673,7 @@ def get_config_informationurl2(local_port):
                     # os.system('python SS1_ip2.py')
                     break
                 n += 1
-
+    node_links = list(dict.fromkeys(node_links))
     print(f'get_config_informationurl2共有节点数目为：{len(node_links)}')
     return node_links
 
