@@ -30,7 +30,14 @@ from run_port_exe import run_exe
 # from upload_node import upload
 # 全局变量记录最后成功循环的时间
 last_loop_time = time.time()
-
+# 需要排除的加密方式，在这里添加即可
+EXCLUDED_METHODS = {
+    'chacha20-poly1305',
+    'blake3-aes-256-gcm',
+    'xchacha20-ietf-poly1305',
+    'chacha20',
+    '2022-blake3-aes-128-gcm',
+}
 def watchdog():
     global last_loop_time  # 添加这一行，声明使用全局变量
     while True:
@@ -443,23 +450,7 @@ def validate_params(method, password, server, port):
 
 
 def parse_ss_url(ss_url):
-    """
-    解析 Shadowsocks ss:// URL。
-
-    支持：
-      1. ss://BASE64(method:password@server:port)#remark
-      2. ss://BASE64(method:password)@server:port#remark
-      3. ss://method:password@server:port#remark
-      4. IPv4、IPv6、域名及 IDN 域名
-      5. URL 查询参数、plugin 参数和备注
-      6. Shadowsocks 2022 多段密码
-      7. 认证字段中的 URL 百分号编码
-
-    注意：
-      - 自动拒绝 VLESS、VMess 等非 SS 协议格式。
-      - 不会把 JSON 配置内容误识别为 method/password。
-      - 解析失败返回 None，并打印原因。
-    """
+    """解析 Shadowsocks 链接。参数无效、格式错误或解析失败时返回 None。"""
     import base64
     import binascii
     import ipaddress
@@ -467,340 +458,412 @@ def parse_ss_url(ss_url):
     import re
     from urllib.parse import unquote, parse_qs
 
-    def fail(reason):
-        print(f"无法解析 SS URL：{reason}")
-        return None
+    INVALID_VALUES = {"", "null", "none", "undefined", "nil"}
 
-    def decode_base64_variants(value):
-        """兼容标准 Base64、URL-safe Base64 和缺少 padding。"""
-        if not isinstance(value, str):
+    def is_valid_value(value):
+        """拒绝空字符串和明显的无效占位值。"""
+        return (
+            isinstance(value, str)
+            and bool(value.strip())
+            and value.strip().lower() not in INVALID_VALUES
+        )
+
+    def decode_b64(text):
+        """解码 Base64 包装层，不对已经识别的密码再次解码。"""
+        if not isinstance(text, str):
             return None
 
-        value = unquote(value.strip())
-        if not value:
+        text = unquote(text.strip())
+        if not text:
             return None
 
         candidates = [
-            value,
-            value.replace("-", "+").replace("_", "/"),
+            text,
+            text.replace("-", "+").replace("_", "/"),
         ]
 
-        seen = set()
-
-        for candidate in candidates:
+        for candidate in dict.fromkeys(candidates):
             candidate = re.sub(r"\s+", "", candidate)
 
-            if not candidate or candidate in seen:
-                continue
-            seen.add(candidate)
-
-            # 标准 Base64 长度模 4 为 1 时无效。
-            if len(candidate) % 4 == 1:
+            if not candidate or len(candidate) % 4 == 1:
                 continue
 
-            padded = candidate + "=" * ((-len(candidate)) % 4)
+            candidate += "=" * (-len(candidate) % 4)
 
             try:
                 raw = base64.b64decode(
-                    padded.encode("ascii"),
+                    candidate.encode("ascii"),
                     validate=True,
                 )
-                text = raw.decode("utf-8")
-                if text:
-                    return text
-            except (
-                ValueError,
-                UnicodeError,
-                binascii.Error,
-            ):
+                return raw.decode("utf-8")
+            except (ValueError, UnicodeError, binascii.Error):
                 continue
 
         return None
 
-    def normalize_host(host):
-        """验证 IP 地址，或把国际化域名转换为 ASCII。"""
-        host = host.strip()
+    def parse_host_port(endpoint):
+        """解析域名、IPv4、[IPv6]:port，并检查端口范围。"""
+        if not isinstance(endpoint, str):
+            return None, None
 
-        if not host:
-            raise ValueError("服务器地址为空")
-
-        try:
-            return str(ipaddress.ip_address(host))
-        except ValueError:
-            pass
-
-        if any(ch.isspace() for ch in host):
-            raise ValueError("服务器域名包含空白字符")
-
-        if any(ch in host for ch in "/?#@[]"):
-            raise ValueError("服务器域名包含非法字符")
-
-        try:
-            ascii_host = host.rstrip(".").encode("idna").decode("ascii")
-        except UnicodeError as exc:
-            raise ValueError(f"域名 IDNA 转换失败：{host}") from exc
-
-        if not ascii_host or len(ascii_host) > 253:
-            raise ValueError("服务器域名长度无效")
-
-        for label in ascii_host.split("."):
-            if (
-                not label
-                or len(label) > 63
-                or label.startswith("-")
-                or label.endswith("-")
-                or not re.fullmatch(r"[A-Za-z0-9-]+", label)
-            ):
-                raise ValueError(f"服务器域名格式无效：{host}")
-
-        return ascii_host.lower()
-
-    def parse_endpoint(endpoint):
-        """解析 host:port，兼容 [IPv6]:port。"""
         endpoint = endpoint.strip().split("/", 1)[0]
-
         if not endpoint:
-            raise ValueError("缺少服务器地址和端口")
+            return None, None
 
         if endpoint.startswith("["):
             match = re.fullmatch(r"\[([^\]]+)\]:(\d+)", endpoint)
             if not match:
-                raise ValueError(
-                    "IPv6 格式无效，应为 [IPv6]:端口"
-                )
+                return None, None
 
             host, port_text = match.groups()
 
             try:
                 ipaddress.IPv6Address(host)
-            except ValueError as exc:
-                raise ValueError(f"无效的 IPv6 地址：{host}") from exc
+            except ValueError:
+                return None, None
         else:
             if endpoint.count(":") != 1:
-                raise ValueError(
-                    "服务器端点格式无效；IPv6 必须使用 [IPv6]:端口"
-                )
+                return None, None
 
             host, port_text = endpoint.rsplit(":", 1)
 
         if not port_text.isdigit():
-            raise ValueError(f"端口不是有效整数：{port_text}")
+            return None, None
 
         port = int(port_text)
         if not 1 <= port <= 65535:
-            raise ValueError(f"端口超出范围：{port}")
-
-        return normalize_host(host), port
-
-    def split_auth(auth):
-        """
-        拆分 method:password。
-        先进行百分号解码，再只按第一个冒号拆分。
-        """
-        if not isinstance(auth, str):
             return None, None
 
-        auth = unquote(auth.strip())
-
-        if ":" not in auth:
+        host = host.strip()
+        if not host or any(c.isspace() for c in host):
             return None, None
 
-        method, password = auth.split(":", 1)
-        method = method.strip()
-        password = password.strip()
+        try:
+            host = str(ipaddress.ip_address(host))
+        except ValueError:
+            if any(c in host for c in "/?#@[]"):
+                return None, None
 
-        if not method or not password:
-            return None, None
+            try:
+                host = (
+                    host.rstrip(".")
+                    .encode("idna")
+                    .decode("ascii")
+                    .lower()
+                )
+            except UnicodeError:
+                return None, None
 
-        # 关键防护：加密方式必须是算法名称，不能是 JSON 片段。
-        # 例如 {"add"、"method" 等均不能通过。
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", method):
-            return None, None
+            if not host or len(host) > 253:
+                return None, None
 
-        # 避免将明显的 JSON 字段或协议配置误当算法。
-        if method.lower() in {
-            "add", "id", "net", "tls", "v", "ps",
-            "port", "host", "path", "sni", "type",
-        }:
-            return None, None
+            for label in host.split("."):
+                if (
+                    not label
+                    or len(label) > 63
+                    or label.startswith("-")
+                    or label.endswith("-")
+                    or not re.fullmatch(r"[A-Za-z0-9-]+", label)
+                ):
+                    return None, None
 
-        return method, password
+        return host, port
 
-    def looks_like_other_protocol(decoded):
-        """
-        识别被误塞进 SS 链接的 VLESS/VMess 等 JSON。
-        即使 JSON 后面附加了乱码，也不能继续按密码解析。
-        """
-        if not isinstance(decoded, str):
-            return False
+    def looks_like_non_ss(text):
+        """拒绝误装在 SS 链接中的其他协议 JSON。"""
+        if not isinstance(text, str):
+            return True
 
-        text = decoded.lstrip("\ufeff \t\r\n")
+        text = text.lstrip("\ufeff \t\r\n")
 
         if not text.startswith("{"):
             return False
 
-        # 优先判断完整 JSON。
         try:
             obj = json.loads(text)
             if isinstance(obj, dict):
-                protocol_keys = {
+                keys = {
                     "add", "id", "net", "tls", "v",
                     "ps", "scy", "sni", "alpn",
                 }
-                if protocol_keys.intersection(obj.keys()):
+                if keys.intersection(obj):
                     return True
-        except (json.JSONDecodeError, ValueError):
+        except (ValueError, TypeError):
             pass
 
-        # 部分错误订阅会在 JSON 后面拼接二进制或乱码。
-        # 即使完整 JSON 解析失败，只要开头明显是 JSON 节点字段，
-        # 仍然拒绝，避免把 JSON 的冒号当作 method/password 分隔符。
-        if re.match(
+        return bool(re.match(
             r'^\{\s*"(?:add|id|net|tls|v|ps|scy|sni|alpn)"\s*:',
             text,
             re.IGNORECASE,
-        ):
-            return True
+        ))
 
-        return False
+    def valid_method(method):
+        """只接受当前 Shadowsocks 客户端支持的加密方式。"""
+        if not isinstance(method, str):
+            return False
 
-    if not isinstance(ss_url, str):
-        return fail("输入不是字符串")
+        method = method.strip().lower()
 
-    ss_url = ss_url.strip()
+        supported_methods = {
+            "plain", "none", "table",
+            "rc4-md5", "rc4",
 
-    if not ss_url.lower().startswith("ss://"):
-        return fail("链接不是 ss:// 格式")
+            "aes-128-ctr", "aes-192-ctr", "aes-256-ctr",
 
-    body = ss_url[5:].strip()
-    if not body:
-        return fail("ss:// 后没有内容")
+            "aes-128-cfb", "aes-128-cfb1",
+            "aes-128-cfb8", "aes-128-cfb128",
+            "aes-192-cfb", "aes-192-cfb1",
+            "aes-192-cfb8", "aes-192-cfb128",
+            "aes-256-cfb", "aes-256-cfb1",
+            "aes-256-cfb8", "aes-256-cfb128",
 
-    # 分离备注。
-    remark = ""
-    if "#" in body:
-        body, fragment = body.split("#", 1)
-        remark = unquote(fragment)
+            "aes-128-ofb", "aes-192-ofb", "aes-256-ofb",
 
-    # 分离查询参数。
-    query = ""
-    if "?" in body:
-        body, query = body.split("?", 1)
+            "camellia-128-ctr", "camellia-192-ctr",
+            "camellia-256-ctr",
 
-    plugin = ""
-    if query:
-        try:
-            params = parse_qs(query, keep_blank_values=True)
-            plugin = params.get("plugin", [""])[0]
-        except Exception:
-            plugin = ""
+            "camellia-128-cfb", "camellia-128-cfb1",
+            "camellia-128-cfb8", "camellia-128-cfb128",
+            "camellia-192-cfb", "camellia-192-cfb1",
+            "camellia-192-cfb8", "camellia-192-cfb128",
+            "camellia-256-cfb", "camellia-256-cfb1",
+            "camellia-256-cfb8", "camellia-256-cfb128",
 
-    body = body.strip()
-    if not body:
-        return fail("链接主体为空")
+            "camellia-128-ofb", "camellia-192-ofb",
+            "camellia-256-ofb",
 
-    method = None
-    password = None
-    server = None
-    port = None
+            "chacha20-ietf",
 
-    if "@" in body:
-        # 格式：
-        # ss://BASE64(method:password)@server:port
-        # ss://method:password@server:port
-        auth_part, endpoint = body.rsplit("@", 1)
+            "aes-128-gcm", "aes-256-gcm",
+            "chacha20-ietf-poly1305",
 
-        if not endpoint.strip():
-            return fail("缺少服务器地址和端口")
+            "2022-blake3-aes-128-gcm",
+            "2022-blake3-aes-256-gcm",
+            "2022-blake3-chacha20-poly1305",
+        }
 
-        auth_part = auth_part.strip()
+        return method in supported_methods
 
-        # 先尝试明文 method:password。
-        direct_method, direct_password = split_auth(auth_part)
+    def valid_password(password):
+        """
+        验证密码是否存在。
+        不对密码做 Base64 解码，避免改变合法密码。
+        """
+        if not isinstance(password, str):
+            return False
 
-        if direct_method and direct_password:
-            method = direct_method
-            password = direct_password
-        else:
-            # 再尝试 Base64 编码的认证信息。
-            decoded_auth = decode_base64_variants(auth_part)
+        password = password.strip()
 
-            if decoded_auth is None:
-                return fail("认证信息不是有效的 method:password 或 Base64")
+        if not password or password.lower() in INVALID_VALUES:
+            return False
 
-            # 核心修复：先检查是否是其他协议的 JSON 配置。
-            # 不能再从 {"add":"93.114... 中拆出 method/password。
-            if looks_like_other_protocol(decoded_auth):
-                return fail(
-                    "检测到 VLESS/VMess 等非 Shadowsocks JSON 节点，"
-                    "已拒绝错误解析"
-                )
+        # 防止将其他协议链接或 JSON 当作密码。
+        if password.startswith("{"):
+            return False
 
-            decoded_method, decoded_password = split_auth(decoded_auth)
+        if password.lower().startswith((
+            "ss://", "ssr://", "vless://",
+            "vmess://", "trojan://",
+        )):
+            return False
 
-            if not decoded_method or not decoded_password:
-                return fail(
-                    "Base64 解码内容不是有效的 Shadowsocks method:password"
-                )
+        return True
 
-            method = decoded_method
-            password = decoded_password
+    def parse_auth(auth, depth=0):
+        """解析认证字段，优先保留已识别的原始密码。"""
+        if not isinstance(auth, str) or depth > 4:
+            return None, None
 
-        try:
-            server, port = parse_endpoint(endpoint)
-        except ValueError as exc:
-            return fail(str(exc))
+        auth = unquote(auth.strip())
 
-    else:
-        # 格式：
-        # ss://BASE64(method:password@server:port)
-        decoded = decode_base64_variants(body)
+        if not auth or looks_like_non_ss(auth):
+            return None, None
 
-        if decoded is None:
-            return fail("整个链接主体无法进行 Base64 解码")
+        # 优先解析原始 method:password。
+        # 一旦匹配成功，不再对 password 进行 Base64 解码。
+        if ":" in auth:
+            method, password = auth.split(":", 1)
+            method = method.strip()
+            password = password.strip()
+
+            if valid_method(method) and valid_password(password):
+                return method, password
+
+        # 原始认证字段不符合格式，才尝试解码其包装层。
+        decoded = decode_b64(auth)
+        if not decoded:
+            return None, None
 
         decoded = decoded.strip()
 
-        if looks_like_other_protocol(decoded):
-            return fail(
-                "检测到 VLESS/VMess 等非 Shadowsocks JSON 节点，"
-                "不能作为 SS 节点返回"
+        if looks_like_non_ss(decoded):
+            return None, None
+
+        # 解码结果是另一层 SS 链接时，继续识别嵌套格式。
+        if decoded.lower().startswith("ss://"):
+            inner = decoded[5:].strip()
+
+            if "#" in inner:
+                inner = inner.split("#", 1)[0]
+
+            if "?" in inner:
+                inner = inner.split("?", 1)[0]
+
+            if "@" in inner:
+                inner = inner.rsplit("@", 1)[0]
+
+            return parse_auth(inner, depth + 1)
+
+        # 认证字段解码后，若得到合法的 method:password，
+        # 直接保留密码文本，不再对密码单独解码。
+        if ":" in decoded:
+            method, password = decoded.split(":", 1)
+            method = method.strip()
+            password = password.strip()
+
+            if valid_method(method) and valid_password(password):
+                return method, password
+
+        # 仍无法识别时，继续尝试有限层数的包装。
+        if depth < 4:
+            return parse_auth(decoded, depth + 1)
+
+        return None, None
+
+    def build_result(auth_part, endpoint, remark="", plugin=""):
+        """统一校验所有必要字段，任何一项无效都返回 None。"""
+        server, port = parse_host_port(endpoint)
+
+        if not server or port is None:
+            return None
+
+        method, password = parse_auth(auth_part)
+
+        if not valid_method(method) or not valid_password(password):
+            return None
+
+        return {
+            "method": method,
+            "password": password,
+            "server": server,
+            "port": port,
+            "remark": remark,
+            "plugin": plugin,
+        }
+
+    def parse_link(link, depth=0):
+        """解析完整 SS URL，支持现代格式、旧格式及嵌套包装。"""
+        if depth > 4 or not isinstance(link, str):
+            return None
+
+        link = link.strip()
+
+        if not link.lower().startswith("ss://"):
+            return None
+
+        body = link[5:].strip()
+        if not body:
+            return None
+
+        remark = ""
+
+        if "#" in body:
+            body, fragment = body.split("#", 1)
+            remark = unquote(fragment)
+
+        query = ""
+        if "?" in body:
+            body, query = body.split("?", 1)
+
+        plugin = ""
+
+        if query:
+            try:
+                params = parse_qs(query, keep_blank_values=True)
+                plugin = params.get("plugin", [""])[0]
+            except (ValueError, TypeError):
+                return None
+
+        body = body.strip()
+
+        if not body:
+            return None
+
+        # SIP002 格式：认证字段 @ 服务器地址:端口
+        if "@" in body:
+            auth_part, endpoint = body.rsplit("@", 1)
+
+            return build_result(
+                auth_part,
+                endpoint,
+                remark,
+                plugin,
             )
 
+        # 旧式格式：整个认证字段和服务器地址一起 Base64 编码。
+        decoded = decode_b64(body)
+
+        if not decoded:
+            return None
+
+        decoded = decoded.strip()
+
+        if looks_like_non_ss(decoded):
+            return None
+
+        # 如果整个解码结果仍是 SS URL，递归解析。
+        if decoded.lower().startswith("ss://"):
+            result = parse_link(decoded, depth + 1)
+
+            if result is None:
+                return None
+
+            if remark:
+                result["remark"] = remark
+
+            if plugin:
+                result["plugin"] = plugin
+
+            return result
+
         if "@" not in decoded:
-            return fail("Base64 解码内容缺少 @ 分隔符")
+            return None
 
         auth_part, endpoint = decoded.rsplit("@", 1)
 
-        method, password = split_auth(auth_part)
-        if not method or not password:
-            return fail(
-                "Base64 解码后的认证信息不是有效的 method:password"
-            )
+        return build_result(
+            auth_part,
+            endpoint,
+            remark,
+            plugin,
+        )
 
-        try:
-            server, port = parse_endpoint(endpoint)
-        except ValueError as exc:
-            return fail(str(exc))
+    try:
+        if not isinstance(ss_url, str):
+            return None
 
-    if not method:
-        return fail("加密方式为空")
+        result = parse_link(ss_url)
 
-    if not password:
-        return fail("密码为空")
+        if result is None:
+            return None
 
-    if not server or not port:
-        return fail("服务器地址或端口缺失")
+        # 最终安全检查，防止无效参数混入返回结果。
+        if (
+            not valid_method(result.get("method"))
+            or not valid_password(result.get("password"))
+            or not isinstance(result.get("server"), str)
+            or not result["server"].strip()
+            or result["server"].strip().lower() in INVALID_VALUES
+            or not isinstance(result.get("port"), int)
+            or isinstance(result.get("port"), bool)
+            or not 1 <= result["port"] <= 65535
+        ):
+            return None
 
-    return {
-        "method": method,
-        "password": password,
-        "server": server,
-        "port": port,
-        "remark": remark,
-        "plugin": plugin,
-    }
+        return result
 
+    except Exception:
+        return None
 
 
 def url22_get_ss_list(headers,url22,url22_source,day):
@@ -917,7 +980,10 @@ def get_config_informationurl1(timeout=2):
         #     method = b64.split(':')[0]
         #     remarks = vpn_config.split('#')[1]
         result = parse_ss_url(vpn_config)
-        if result:
+        if result and not any(
+    method in result['method'].lower()
+    for method in EXCLUDED_METHODS
+):
             method = result['method']
             password = result['password']
             server = result['server']
@@ -1056,8 +1122,11 @@ def get_config_informationurl2(timeout=2,day="[2026-10-22]"):
         # print('vpn_config1137',vpn_config)
         result = parse_ss_url(vpn_config)
         with open(fr'{type_}_result.txt', 'a+', encoding='utf-8') as f:
-            f.write(f"{vpn_config}\n{result}--------------------------------------------------")
-        if result and 'chacha20-poly1305' not in result['method'] and 'blake3-aes-256-gcm' not in result['method']:
+            f.write(f"{vpn_config}\n{result}\n--------------------------------------------------\n\n\n")
+        if result and not any(
+    method in result['method'].lower()
+    for method in EXCLUDED_METHODS
+):
             method = result['method'].rstrip()
             password = result['password'].rstrip()
             server = result['server'].rstrip()
@@ -1207,7 +1276,10 @@ def get_config_informationurl3(timeout=2):
             vpn_config_list.append(vpn_config)
             result = parse_ss_url(vpn_config)
             # print('result522',result)
-            if result:
+            if result and not any(
+    method in result['method'].lower()
+    for method in EXCLUDED_METHODS
+):
                 method = result['method']
                 password = result['password']
                 server = result['server']
@@ -1475,8 +1547,8 @@ def get_config_old(configs, local_port=10802):
 
 
 def main_proxy(local_port=10802):
-    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json", f"{type_}_configs_port{local_port}.json")
-    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json", f"{type_}_configs_port{local_port}.json")
+    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -1493,8 +1565,8 @@ def main_proxy(local_port=10802):
                 if n <=2:
                     show_notification(f"端口 {local_port} 链接错误！准备更新配置", f"不可以上网！【第{n+1}次检测)】", "error")
                 print(f'{n}==代理错误，疑似代理或IP配置有错误？开始重新获取最新IP配置=={type_}')
-                # if n < 8:
-                if n >= 8:
+                if n < 8:
+                # if n >= 8:
                     config = get_config_informationurl()
                 else:
                     congfig_list2 = []
@@ -1605,7 +1677,7 @@ def main_proxy_log():
 
 if __name__ == "__main__":
     # os.system("taskkill /F /IM sslocal.exe")
-    # main_proxy()
+    main_proxy()
 
     # main_proxy_log()
     # start_exe()
@@ -1614,7 +1686,7 @@ if __name__ == "__main__":
     # D:\客户端集合代理\SS2\sslocal1.exe -c D:\客户端集合代理\SS2\configs.json
 
     # get_config_informationurl1()
-    get_config_informationurl2()
+    # get_config_informationurl2()
     # get_config_informationurl3()
     # get_config_informationurl()
 
