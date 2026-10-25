@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 # import json
 import binascii
+import json
 import re
 import subprocess
 import threading
@@ -505,10 +506,10 @@ def parse_ssr(ssr_url):
     - 自动补齐 Base64 末尾填充符
     - password 字段的独立 Base64 解码
     - obfsparam、protoparam、remarks、group 参数解析
-    - rc4、rc4-md5 等加密方法保留原值，不在解析阶段拒绝
+    - rc4、rc4-md5 等方法保留原值（仅在白名单允许时通过）
+    - 过滤 Mihomo SSR 不支持的 cipher
     - 单个节点解析失败时返回 error，不影响其他节点
     """
-
     if not isinstance(ssr_url, str):
         return {
             "error": "SSR 链接必须是字符串",
@@ -534,15 +535,13 @@ def parse_ssr(ssr_url):
             if not raw_value:
                 return b""
 
-            # 标准 SSR Base64 通常使用 + /，URL-safe 格式可能使用 - _。
+            # 兼容 URL-safe Base64
             raw_value = raw_value.replace("-", "+").replace("_", "/")
 
-            # Base64 长度余数为 1 时，不可能仅靠补 = 修复。
+            # 长度余数为 1 时，不能通过补齐 = 修复
             remainder = len(raw_value) % 4
             if remainder == 1:
-                raise ValueError(
-                    "Base64 字符串长度无效，长度余数为 1"
-                )
+                raise ValueError("Base64 字符串长度无效，长度余数为 1")
 
             if remainder:
                 raw_value += "=" * (4 - remainder)
@@ -552,16 +551,11 @@ def parse_ssr(ssr_url):
         return base64.b64decode(raw_value, validate=True)
 
     def b64_decode_text(value):
-        """Base64 解码为文本。"""
+        """Base64 解码为 UTF-8 文本。"""
         return b64_decode_bytes(value).decode("utf-8-sig")
 
     def decode_password(value):
-        """
-        解码 SSR 密码字段。
-
-        SSR 主体中的密码一般是 Base64 编码。
-        如果解码后不是 UTF-8，返回明确错误，避免生成错误密码。
-        """
+        """解码 SSR 密码字段。"""
         value = value.strip()
 
         if not value:
@@ -571,17 +565,8 @@ def parse_ssr(ssr_url):
 
     def decode_parameter(value):
         """
-        解析 SSR 查询参数值。
-
-        SSR 参数常见形式：
-        - obfsparam=...
-        - protoparam=...
-        - remarks=...
-        - group=...
-
-        参数值先经过 URL 解码。
-        对 remarks/group，通常是 URL 编码后的文本；
-        对 obfsparam/protoparam，部分订阅源会额外使用 Base64。
+        解析 SSR 查询参数。
+        兼容 URL 编码和部分订阅源使用的 Base64 参数。
         """
         if value is None:
             return ""
@@ -591,20 +576,20 @@ def parse_ssr(ssr_url):
         if not value:
             return ""
 
-        # 参数值中有中文、空格、标点等时，优先按普通文本保留。
-        # 对纯 Base64 字符串，尝试解码并验证结果。
+        # 含中文、空格或其他非 Base64 字符时，按普通文本保留
         if not re.fullmatch(r"[A-Za-z0-9+/=_-]+", value):
             return value
 
         try:
             decoded = b64_decode_text(value)
 
-            # 只接受可打印文本，防止将普通参数误判为 Base64。
+            # 只接受可打印文本，避免误解码普通参数
             if decoded and all(
                 ch.isprintable() or ch in "\r\n\t"
                 for ch in decoded
             ):
                 return decoded
+
         except (
             ValueError,
             UnicodeDecodeError,
@@ -615,10 +600,8 @@ def parse_ssr(ssr_url):
         return value
 
     try:
-        # 1. 解码外层 SSR Base64。
+        # 1. 解码外层 SSR Base64
         encoded = ssr_url[6:].strip()
-
-        # 外层分享链接中不应包含空格，但有些复制过程会插入换行。
         encoded = re.sub(r"\s+", "", encoded)
 
         decoded = b64_decode_text(encoded).strip()
@@ -626,7 +609,7 @@ def parse_ssr(ssr_url):
         if not decoded:
             raise ValueError("外层 Base64 解码结果为空")
 
-        # 2. 分离主体和查询参数。
+        # 2. 分离主体和查询参数
         if "/?" in decoded:
             server_part, query_part = decoded.split("/?", 1)
         else:
@@ -636,15 +619,11 @@ def parse_ssr(ssr_url):
 
         # SSR 标准格式：
         # server:port:protocol:method:obfs:password
-        #
-        # 不要在这里先对整个主体调用 unquote，
-        # 否则可能把编码后的分隔符变成真实分隔符。
         fields = server_part.split(":")
 
         if len(fields) < 6:
             raise ValueError(
-                "SSR 主体字段不足："
-                f"预期至少 6 段，实际得到 {len(fields)} 段"
+                f"SSR 主体字段不足：预期至少 6 段，实际得到 {len(fields)} 段"
             )
 
         server = fields[0].strip()
@@ -653,8 +632,7 @@ def parse_ssr(ssr_url):
         method = fields[3].strip()
         obfs = fields[4].strip()
 
-        # 标准 IPv4/域名 SSR 链接中，密码是第 6 段。
-        # 合并剩余字段，避免非标准数据中的额外冒号被直接丢弃。
+        # 合并剩余字段，避免额外冒号导致内容被丢弃
         password_encoded = ":".join(fields[5:]).strip()
 
         if not server:
@@ -677,11 +655,10 @@ def parse_ssr(ssr_url):
         if not obfs:
             raise ValueError("SSR obfs 字段为空")
 
-        # 3. 解码密码。
+        # 3. 解码密码
         password = decode_password(password_encoded)
 
-        # 4. 解析查询参数。
-        # parse_qsl 可正确处理参数中的多个等号和空值。
+        # 4. 解析查询参数
         raw_params = {}
 
         if query_part:
@@ -721,9 +698,29 @@ def parse_ssr(ssr_url):
 
         group = get_param("group")
 
-        # 5. 构造配置。
-        # 不在解析阶段拒绝 rc4、rc4-md5。
-        # 后续内核不支持时，应由启动或连接阶段报告。
+        # 5. 过滤 Mihomo SSR 不支持的 cipher
+        # 注意：这是 SSR 专用白名单，不是普通 SS 的 cipher 列表。
+        supported_ssr_ciphers = {
+            "none",
+            "aes-128-cfb",
+            "aes-192-cfb",
+            "aes-256-cfb",
+            "rc4-md5",
+            "chacha20-ietf",
+            "xchacha20",
+        }
+
+        # 不区分算法名称大小写进行匹配，但保留原始 method
+        if method.lower() not in supported_ssr_ciphers:
+            return {
+                "error": f"SSR 不支持的 cipher: {method}",
+                "cipher": method,
+                "server": server,
+                "port": port,
+                "original": ssr_url,
+            }
+
+        # 6. 构造代理配置
         result = {
             "name": f"{server}:{port}",
             "type": "ssr",
@@ -734,7 +731,7 @@ def parse_ssr(ssr_url):
             "obfs": obfs,
             "protocol": protocol,
             "obfs-param": obfs_param,
-            "protocol-param": protocol_param
+            "protocol-param": protocol_param,
         }
 
         if remarks:
@@ -750,7 +747,6 @@ def parse_ssr(ssr_url):
             "error": f"{type(e).__name__}: {e}",
             "original": ssr_url
         }
-
 
 
 
@@ -1004,7 +1000,7 @@ def get_config_informationurl1(local_port):
     # 去重，同时保持原有顺序。
     ssr_links = list(dict.fromkeys(res_list))
 
-    print("get_config_informationurl1_ssr_links626 节点", len(ssr_links))
+    print("get_config_informationurl1_ssr_links626节点", len(ssr_links))
 
     # ---------------------------------------------------------
     # 解析所有 SSR 链接。
@@ -1014,7 +1010,7 @@ def get_config_informationurl1(local_port):
         try:
             node = parse_ssr(link)
 
-            if node:
+            if node  and "error" not in node:
                 config_list.append(node)
             else:
                 config_err_list.append(link)
@@ -1112,8 +1108,21 @@ def get_config_informationurl2(local_port):
     # print(f"\n成功解析 {len(nodes)}/{len(res_list)} 个节点")
 
     # 解析所有 SSR 链接
-    proxies = [parse_ssr(link) for link in ssr_links]
+    # proxies = [parse_ssr(link) for link in ssr_links]
+    proxies = []
+    failed_proxies = []
 
+    for link in ssr_links:
+        result = parse_ssr(link)
+
+        if "error" in result:
+            failed_proxies.append(result)
+            print(f"跳过节点：{result['error']}")
+        else:
+            proxies.append(result)
+
+    print(f"有效 SSR 节点：{len(proxies)} 个")
+    print(f"已过滤节点：{len(failed_proxies)} 个")
 
     print('get_config_informationurl2_ssr_links802节点', len(proxies))
     #get_config_informationurl2_ssr_links626节点 20
@@ -1222,7 +1231,21 @@ def get_config_informationurl3(local_port):
         if 'ssr://' in str(vpn_config) :
             # 解析所有 SSR 链接
             ssr_links.append(vpn_config)
-    proxies = [parse_ssr(link) for link in ssr_links]
+    # proxies = [parse_ssr(link) for link in ssr_links]
+    proxies = []
+    failed_proxies = []
+
+    for link in ssr_links:
+        result = parse_ssr(link)
+
+        if "error" in result:
+            failed_proxies.append(result)
+            print(f"跳过节点：{result['error']}")
+        else:
+            proxies.append(result)
+
+    print(f"有效 SSR 节点：{len(proxies)} 个")
+    print(f"已过滤节点：{len(failed_proxies)} 个")
     print('get_config_informationurl3_ssr_links843节点', len(proxies))
     return proxies
 
@@ -1262,8 +1285,25 @@ def get_config_informationurl(local_port):
     unique_proxies = []
     seen = set()
     # print('\n'.join(list(congfig_list1) + list(congfig_list2) + list(congfig_list3)))
-    if len(congfig_list1 + congfig_list2 + congfig_list3) != 0:
-        for proxy in congfig_list1 + congfig_list2 + congfig_list3:
+    def dedup_configs(configs, key_fields=(
+            'name', 'type', 'server', 'port', 'password', 'cipher',
+            # 'obfs', 'protocol',
+    )):
+        seen = set()
+        out = []
+        for cfg in configs:
+            # 用 get 防止个别条目缺字段；缺失时补 None
+            k = tuple(cfg.get(f) for f in key_fields)
+            if k not in seen:
+                seen.add(k)
+                out.append(cfg)
+        return out
+
+    congfig_list = dedup_configs(congfig_list1 + congfig_list2 + congfig_list3)
+    with open(fr'ssr1_congfig_list.txt', 'w+', encoding='utf-8') as f:
+        f.write(f"{congfig_list}")
+    if len(congfig_list) != 0:
+        for proxy in congfig_list:
             # 将字典转换为可哈希的元组表示
             proxy_tuple = tuple(sorted(proxy.items()))
             if proxy_tuple not in seen:
@@ -1392,8 +1432,8 @@ def get_config_old(configs, local_port=10805):
 
 
 def main_proxy(local_port=10805):
-    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port88.yaml", f"{type_}_clash_config_port88.yaml")
+    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port88.yaml", f"{type_}_clash_config_port88.yaml")
     time.sleep(2)
 
     # 启动监控进程
@@ -1440,7 +1480,7 @@ def main_proxy(local_port=10805):
             if n>18:
                 n = 0
                 download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+                download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.yaml", f"{type_}_configs_port88.yaml")
                 time.sleep(2)
 
                 pass
@@ -1573,7 +1613,7 @@ def main_proxy_log():
 
 if __name__ == "__main__":
     # os.system("taskkill /F /IM sslocal.exe")
-    # main_proxy()
+    main_proxy()
 
     # main_proxy_log()
     # start_exe()
@@ -1582,6 +1622,6 @@ if __name__ == "__main__":
     # D:\客户端集合代理\SSR1\sslocal1.exe -c D:\客户端集合代理\SSR1\configs.json
 
     # get_config_informationurl1(10805)
-    get_config_informationurl2(10805)
+    # get_config_informationurl2(10805)
     # get_config_informationurl3(10805)
     # get_config_informationurl(10805)
