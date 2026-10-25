@@ -31,12 +31,11 @@ from upload_node import upload
 today = time.strftime('%Y%m%d', time.localtime())
 # today = '20250528'
 #需要爬取网页的 soup BeautifulSoup
-url1 = "https://www.cfmem.com/" #
+url11_source = "https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt"
+url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt'
 #直接解码：如c3M6Ly9ZV1Z6TFRJMU5pMWpabUk2WVhkemNITXdOVEF4QDM0LjIxOS43Mi44
 url2_list = [
              "https://proxy.v2gh.com/https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt",# 不用解码  12小时
-             # f"http://wanzhuanmi.cczzuu.top/node/{today}-v2ray.txt",# 约1天更新一次  有点小多http://wanzhuanmi.cczzuu.top/node/20260220-clash.yaml
-             "https://raw.dgithub.xyz/ripaojiedian/freenode/main/sub",  #8-9 小时更新一次
              "https://proxy.v2gh.com/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub",# 约38分钟更新一次
              "https://proxy.v2gh.com/https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together",# 约8分钟更新一次
              "https://proxy.v2gh.com/https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess",# 约1小时更新一次  有点小多
@@ -388,100 +387,62 @@ def get_ss(ss_url=f'https://v2rayse.com/fs/public/{today}/kdfbypk.txt'):
 
 
 def get_config_informationurl1(local_port):
-    # http = urllib3.PoolManager()
-    webpage = ''
-    html = ''
+    reg_list = []
+
     n = 0
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
     while True:
         print('使用连接1进行更新！')
         try:
-            if n > 2:
+
+
+            if n >= 2:
                 print('使用AI_all_auto代理88')
                 proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                webpage = requests.get(url1, headers=headers, timeout=8, proxies=proxies)
+                try:
+                    reg = requests.get(url11_source, headers=headers,proxies=proxies, timeout=8).text
+                except:
+                    reg = requests.get(url11, headers=headers,proxies=proxies, timeout=8).text
             else:
                 print('不使用代理')
-                webpage = requests.get(url1, headers=headers, timeout=8)
-            link_url1_successful = '连接1成功！'
-            print(link_url1_successful)
-            break
+                try:
+                    reg = requests.get(url11, headers=headers, timeout=8).text
+                except:
+                    reg = requests.get(url11_source, headers=headers, timeout=8).text
+            # print(reg)
+            # soup = BeautifulSoup(reg, 'html.parser')
+            # reg_list.append(reg)
+            if 'DOCTYPE html' in reg:
+                pass
+            else:
+                reg_list = reg.split()
+                link_url2_successful = '连接1成功！'
+                print(link_url2_successful)
+                break
 
         except Exception as err:
             print(err)
-            print('连接1错误，2秒后重试！')
+            print('连接3错误，2秒后重试！')
             time.sleep(2)
         # print(n)
         if n >= 8:
-            # os.system('python SS1_ip2.py')
             break
         n += 1
-    if webpage != '':
-        data = webpage.content
-        # data = html.data.decode()
-        code = BeautifulSoup(data, 'html.parser')
-        # print(code)
-        yaml_vpn_url = ''
-        code_vpn = ''
-        ss = ''
-        for i,url_vpn in enumerate(code.find_all('h2')):
-            # print('url_vpn22',url_vpn)
-            if i == 0 :
-                href_url = url_vpn.find('a').get('href')
-                # print(href_url)
-                # time.sleep(99)
-                n = 0
-                while True:
-                    print('使用连接1进行更新！')
-                    try:
-                        if n > 2:
-                            print('使用AI_all_auto代理88')
-                            proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                            webpage = requests.get(href_url, headers=headers, timeout=8, proxies=proxies)
-                        else:
-                            print('不使用代理')
-                            webpage = requests.get(href_url, headers=headers, timeout=8)
-                        href_url = '连接href_url成功！'
-                        print(href_url)
-                        break
 
-                    except Exception as err:
-                        print(err)
-                        print('连接href_url错误，2秒后重试！')
-                        time.sleep(2)
-                    # print(n)
-                    if n >= 8:
-                        # os.system('python SS1_ip2.py')
-                        break
-                    n += 1
-                data = webpage.content
-                code_vpn = BeautifulSoup(data, 'html.parser')
-        for div in code_vpn.find_all('div'):
-            ss_url = div.get_text(strip=True)
 
-            if ss_url.endswith('.txt') and ss_url.startswith('http'):
-                # print(ss_url)
-                print('ss_url710',ss_url)#https://v2rayse.com/fs/public/20260208/kdfbypk.txt
-                ss = get_ss(ss_url)
-            # print()
-            # if 'yaml' in yaml_vpn.text :
-            #     yaml_vpn_url = yaml_vpn.text.split('即可更新订阅链接')[-1]
-            #     print(yaml_vpn_url)
-        # print('ss442',ss)
-        b = bytes(ss, encoding='utf-8')
-        b64 = base64.b64decode(b).decode().split('\n')
-        # print(b64)
-        node_links = []
-        for i,sss in enumerate(b64 ):
-            # print(i)
-            # print(sss[0:3])
-            if 'ss:' not in sss[0:3] :
-                # print('sss221',sss)
-                # print(sss)
-                node_links.append(sss)
-        node_links = list(dict.fromkeys(node_links))
-        print(f'get_config_informationurl1共有节点数目为：{len(node_links)}')
-        return node_links
+
+    node_links = []
+    for i,sss in enumerate(reg_list):
+        # print(i)
+        # print(sss[0:3])
+        if 'ss:' not in sss[0:3] and 'ssr:' not in sss[0:3]:
+            # print('sss221',sss)
+            # print(sss)
+            node_links.append(sss)
+    node_links = list(dict.fromkeys(node_links))
+    # print(node_links)
+    print(f'541get_config_informationurl1共有节点数目为：{len(node_links)}')
+    return node_links
 
 
 
@@ -496,7 +457,8 @@ def get_config_informationurl(local_port):
     if not node_links1:
         node_links1 = []
     try:
-        node_links2 = get_config_informationurl2(local_port)
+        # node_links2 = get_config_informationurl2(local_port)
+        pass
     except:
         traceback.print_exc()
     node_link_list = node_links1 + node_links2
@@ -836,9 +798,9 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def main_proxy(local_port=10822):
-    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
-                                 f"{type_}_configs_port{local_port}.json")
-    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
+    #                              f"{type_}_configs_port{local_port}.json")
+    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -1710,8 +1672,8 @@ def main_proxy_log():
 
 
 if __name__ == "__main__":
-    # main_proxy()
+    main_proxy()
 
-    main_proxy_log()
+    # main_proxy_log()
     # get_config_informationurl1(10822)
     # get_config_informationurl2(10822)
