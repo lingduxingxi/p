@@ -47,6 +47,9 @@ logging.captureWarnings(True)  # 强制取消证书验证警告
 # url1 = "https://www.cfmem.com/"  # ss
 url1 = "https://clashgithub.com/"  # ss
 
+# 备份的SS
+##https://alireza786786.github.io/Free-V2ray-Configs/servers/ss_servers.txt
+#https://github.com/LoneKingCode/free-proxy-db/blob/main/proxies/ss.txt
 
 url2_list = ["https://ghfile.geekertao.top/https://raw.githubusercontent.com/ripaojiedian/freenode/refs/heads/main/sub",
              "https://ghfile.geekertao.top/https://raw.githubusercontent.com/abshare3/abshare3.github.io/main/README.md","https://ghfile.geekertao.top/https://raw.githubusercontent.com/mksshare/mksshare.github.io/main/README.md","https://ghfile.geekertao.top/https://raw.githubusercontent.com/hello-world-1989/v2-sub/refs/heads/main/end-gfw-together-ss",
