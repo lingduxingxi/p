@@ -41,7 +41,7 @@ except ImportError:
 
 APP_NAME = "ChatGPT 国际软件代理管家"   # 需求 5：标题可在此处修改
 PROCESS_NAME = "ChatGPT.exe"
-PORTS = [8892,88, 8100, 10801, 10802, 10805, 10806, 10822, 10999]
+PORTS = [8892, 88, 8100, 10801, 10802, 10805, 10806, 10822, 10999]
 ICON_FILE = "fso_publish_qt.ico"        # 需求 2：托盘/窗口图标文件
 
 # 需求 1：浏览器不参与代理。这里既从默认清单里移除，也做兜底黑名单，
@@ -55,7 +55,6 @@ BROWSER_PROCESS_NAMES = {
 DEFAULT_PROXY_APPS = [
     "ChatGPT.exe", "Codex.exe",
 ]
-
 
 
 # 便于首次配置的预设，不代表这些端口必然使用对应协议。
@@ -79,11 +78,32 @@ def is_admin():
         return False
 
 
+def program_dir():
+    """返回程序所在目录：打包后为 exe 所在目录，源码运行为脚本所在目录。"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
 def app_data_dir():
-    base = os.environ.get("LOCALAPPDATA") or str(Path.home())
-    p = Path(base) / "ChatGPTProxyManager"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+    """
+    配置目录改为程序同目录下的 data 子文件夹（绿色便携）。
+    若该目录不可写（例如位于受保护目录），自动回退到 LOCALAPPDATA，
+    避免因权限问题导致配置无法保存。
+    """
+    preferred = program_dir() / "data"
+    try:
+        preferred.mkdir(parents=True, exist_ok=True)
+        # 实际写测试，确认可写
+        probe = preferred / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        return preferred
+    except Exception:
+        base = os.environ.get("LOCALAPPDATA") or str(Path.home())
+        fallback = Path(base) / "ChatGPTProxyManager"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
 
 
 APP_DIR = app_data_dir()
@@ -107,6 +127,7 @@ def default_settings():
         "protocols": {str(k): v for k, v in DEFAULT_PROTOCOLS.items()},
         "startup_task": False,
         "verbose": 1,
+        "tray_notifications": False,  # 右下角托盘通知总开关
     }
 
 
@@ -248,12 +269,10 @@ def make_profile(port, protocol, proxy_apps=None):
 def load_app_icon():
     """需求 2：加载 fso_publish_qt.ico；找不到则返回 None 由调用方回退。"""
     candidates = [
+        program_dir() / ICON_FILE,
         Path.cwd() / ICON_FILE,
-        Path(__file__).resolve().parent / ICON_FILE,
         APP_DIR / ICON_FILE,
     ]
-    if getattr(sys, "frozen", False):
-        candidates.insert(0, Path(sys.executable).resolve().parent / ICON_FILE)
     for path in candidates:
         try:
             if path.is_file():
@@ -861,14 +880,16 @@ class MainWindow(QMainWindow):
                 if enabled.get(name, True) and notified is None:
                     notified = name
             if notified:
-                # 需求 4：右下角提示，点击可关闭该软件代理
                 self._last_notified_app = notified
-                self.tray.showMessage(
-                    APP_NAME,
-                    f"监测到您已经打开 {notified} 并自动代理，点击可关闭该软件的代理模式。",
-                    QSystemTrayIcon.MessageIcon.Information,
-                    6000
-                )
+                if self.settings.get("tray_notifications", False):
+                    self.tray.showMessage(
+                        APP_NAME,
+                        "程序已缩到系统托盘。双击图标可重新打开，右键可管理代理。",
+                        QSystemTrayIcon.MessageIcon.Information,
+                        3000
+                    )
+                else:
+                    self.log(f"监测到已打开 {notified}，已自动代理。")
             # 确保 CLI 在运行
             if self.cli_process is None or self.cli_process.poll() is not None:
                 self.log("名单软件已启动，自动开启代理。")
