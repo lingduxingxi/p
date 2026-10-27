@@ -22,8 +22,8 @@ from run_port_exe import run_exe
 # url1 = "https://dgithub.xyz/Alvin9999/new-pac/wiki/Goflyway%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
 # url1 = "https://bgithub.xyz/Alvin9999-newpac/fanqiang/wiki/Goflyway%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
 url1 = "https://github.com/Alvin9999-newpac/fanqiang/wiki/Goflyway%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
-url2 = "https://gitlab.com/zhifan999/fq/-/wikis/Goflyway%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
-url3 = "https://s3.us-west-2.amazonaws.com/zhifan2/goflyway.html"
+url2 = "https://github.com/Alvin9999-newpac/fanqiang/wiki/Goflyway%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
+url3 = "https://gitlab.com/zhifan999/fq/-/wikis/Goflyway%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
 
 goflyway_exe = 'goflyway.exe'
 pid = os.getpid()  # 当前进程的PID
@@ -354,7 +354,7 @@ def get_config_information(local_port):
                     # req = urllib.request.Request(url1)
                     # webpage = urllib.request.urlopen(req)
                     # proxies = None
-                    if n > 2:
+                    if n > 8:
                         print('使用AI_all_auto代理88')
                         proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                         webpage = requests.get(url1, headers=headers, timeout=8, proxies=proxies)
@@ -363,10 +363,13 @@ def get_config_information(local_port):
                         webpage = requests.get(url1, headers=headers, timeout=8)
 
                     if webpage.status_code == 200:
-                        link_url1_successful = '连接1成功！'
-                        print('291link_url1_successful',link_url1_successful)
-                        html = webpage.content
-                        break
+                        # if 'DOCTYPE html' in webpage:
+                        #     pass
+                        # else:
+                            link_url1_successful = '连接1成功！'
+                            print('291link_url1_successful',link_url1_successful)
+                            html = webpage.content
+                            break
 
                 except Exception as err:
                     print(err)
@@ -382,7 +385,7 @@ def get_config_information(local_port):
                 while True:
                     try:
                         # req = urllib.request.Request(url2)
-                        if n > 2:
+                        if n > 8:
                             print('使用AI_all_auto代理88')
                             proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                             webpage = requests.get(url2, headers=headers, timeout=8, proxies=proxies)
@@ -391,10 +394,13 @@ def get_config_information(local_port):
                             webpage = requests.get(url2, headers=headers, timeout=8)
                         #
                         if webpage.status_code == 200:
-                            link_url2_successful = '连接2成功！'
-                            print(link_url2_successful)
-                            html = webpage.content
-                            break
+                            # if 'DOCTYPE html' in webpage:
+                            #     pass
+                            # else:
+                                link_url2_successful = '连接2成功！'
+                                print(link_url2_successful)
+                                html = webpage.content
+                                break
                         # html = Drission_get_Page(url2)
                         # if html:
                         #     link_url2_successful = '连接2成功！'
@@ -420,10 +426,13 @@ def get_config_information(local_port):
                                 print('不使用代理')
                                 webpage = requests.get(url3, headers=headers, timeout=8)
                             if webpage.status_code == 200:
-                                link_url3_successful = '连接3成功！'
-                                print(link_url3_successful)
-                                html = webpage.content
-                                break
+                                # if 'DOCTYPE html' in webpage:
+                                #     pass
+                                # else:
+                                    link_url3_successful = '连接3成功！'
+                                    print(link_url3_successful)
+                                    html = webpage.content
+                                    break
 
                         except Exception as err:
                             print('连接3错误，2秒后重试！')
@@ -495,7 +504,7 @@ def main_proxy(local_port=8100):
                     show_notification(f"端口 {local_port} 链接错误！准备更新配置", f"不可以上网！【第{n + 1}次检测)】", "error")
                 print('代理错误，疑似代理或IP配置有错误？开始重新获取最新IP配置==GoflywayTools')
                 config = get_config_information(local_port)
-                if config:
+                if config and 'Node1=' in str(config):
                     with open(GoflywayTools_path + r'\goflyway_config.ini', 'w+', encoding='utf-8') as f:
                         f.write(str(config))
                     # upload("goflyway_config.ini")
@@ -1021,9 +1030,9 @@ def main_proxy_log():
 if __name__ == "__main__":
     # main_proxy()
 
-    main_proxy_log()
+    # main_proxy_log()
 
-    # get_config_information(8100)
+    get_config_information(8100)
 
     # https: // clients2.googleusercontent.com / crx / blobs / AeKPYwwmtjxLc9ayiudBGaO7wwLA0teTicFrr4lLhigZF2YxOhAPfxZOwXcXZiw17ewS7OlB_61T0C18lD8cpEPLDv - wX65jGqAv7jCr2qqgKDuSY0yiAMZSmuVzE905olhxi8jWwx5p3bNITL96Ng / PADEKGCEMLOKBADOHGKIFIJOMCLGJGIF_2_5_21_0.crx
 
