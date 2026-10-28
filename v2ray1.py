@@ -31,14 +31,17 @@ from upload_node import upload
 today = time.strftime('%Y%m%d', time.localtime())
 # today = '20250528'
 #需要爬取网页的 soup BeautifulSoup
-url11_source = "https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt"
-url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt'
-#直接解码：如c3M6Ly9ZV1Z6TFRJMU5pMWpabUk2WVhkemNITXdOVEF4QDM0LjIxOS43Mi44
-#https://raw.githubusercontent.com/cbusifabcap/daily_free_vpn/refs/heads/main/sub/V2Ray.yml  多
+# url11_source = "https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt"  #很多 作为备份
+# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt' #很多 作为备份
+
+
+url11_source = "https://raw.githubusercontent.com/wenxig/dongtai-sub/refs/heads/main/data/sub.txt"  #
+url11 = 'https://proxy.v2gh.com//https://raw.githubusercontent.com/wenxig/dongtai-sub/refs/heads/main/data/sub.txt' #
+
 
 url2_list = [
              # "https://ghfile.geekertao.top/https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt",# 不用解码  12小时
-             "https://proxy.v2gh.com/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub",# 约38分钟更新一次
+             "https://ghfile.geekertao.top/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub",# 约38分钟更新一次
              "https://proxy.v2gh.com/https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together",# 约8分钟更新一次
              # "https://proxy.v2gh.com/https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess",# 约1小时更新一次  有点小多
              #
@@ -57,6 +60,8 @@ url2_source_list = [
 
 '''
 ###订阅
+#直接解码：如c3M6Ly9ZV1Z6TFRJMU5pMWpabUk2WVhkemNITXdOVEF4QDM0LjIxOS43Mi44
+#https://raw.githubusercontent.com/cbusifabcap/daily_free_vpn/refs/heads/main/sub/V2Ray.yml  多
 
 https://betternode.githubrowcontent.com/2025/05/20250525.txt #更新不及时
 https://oneclash.githubrowcontent.com/2025/05/20250525.txt #与上一个一样
@@ -452,7 +457,7 @@ def get_config_informationurl(local_port):
     node_links1 = []
     node_links2 = []
     try:
-        # node_links1 = get_config_informationurl1(local_port)
+        node_links1 = get_config_informationurl1(local_port)
         pass
     except:
         traceback.print_exc()
