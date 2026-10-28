@@ -1983,7 +1983,7 @@ def main_proxy_log():
 
 
 if __name__ == "__main__":
-    main_proxy()
-    # main_proxy_log()
+    # main_proxy()
+    main_proxy_log()
     # get_config_informationurl2(10806)
     # print(parse_ssr('ssr://MjAwMTpiYzg6MTIwMzoxMDY6OjMwMTo2MDA2NjphdXRoX2NoYWluX2E6Y2hhY2hhMjAtaWV0Zjp0bHMxLjJfdGlja2V0X2F1dGg6Wkc5dVozUmhhWGRoYm1jdVkyOXQvP29iZnNwYXJhbT0mcmVtYXJrcz1VMU5TNklxQzU0SzVMV2x3ZGpZ'))
