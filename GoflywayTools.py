@@ -359,7 +359,7 @@ def get_config_information(local_port):
                         proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                         webpage = requests.get(url1, headers=headers, timeout=8, proxies=proxies)
                     else:
-                        print('不使用代理')
+                        print('362不使用代理')
                         webpage = requests.get(url1, headers=headers, timeout=8)
 
                     if webpage.status_code == 200:
@@ -376,7 +376,7 @@ def get_config_information(local_port):
                     print('连接1错误，2秒后重试！')
                     time.sleep(2)
                 # print(n)
-                if n >= 8:
+                if n >= 18:
                     break
                 n += 1
             if link_url1_successful != '连接1成功！':
@@ -390,7 +390,7 @@ def get_config_information(local_port):
                             proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                             webpage = requests.get(url2, headers=headers, timeout=8, proxies=proxies)
                         else:
-                            print('不使用代理')
+                            print('393不使用代理')
                             webpage = requests.get(url2, headers=headers, timeout=8)
                         #
                         if webpage.status_code == 200:
@@ -409,7 +409,7 @@ def get_config_information(local_port):
                     except Exception as err:
                         print(f'连接2{url2}错误，2秒后重试！==>>{err}')
                         time.sleep(2)
-                    if n2 >= 8:
+                    if n2 >= 18:
                         break
                     n2 += 1
                 if link_url2_successful != '连接2成功！':
@@ -437,7 +437,7 @@ def get_config_information(local_port):
                         except Exception as err:
                             print('连接3错误，2秒后重试！')
                             time.sleep(2)
-                        if n3 >= 8:
+                        if n3 >= 18:
                             break
                         n3 += 1
                     if link_url3_successful != '连接3成功！':
@@ -1030,9 +1030,9 @@ def main_proxy_log():
 if __name__ == "__main__":
     # main_proxy()
 
-    # main_proxy_log()
+    main_proxy_log()
 
-    get_config_information(8100)
+    # get_config_information(8100)
 
     # https: // clients2.googleusercontent.com / crx / blobs / AeKPYwwmtjxLc9ayiudBGaO7wwLA0teTicFrr4lLhigZF2YxOhAPfxZOwXcXZiw17ewS7OlB_61T0C18lD8cpEPLDv - wX65jGqAv7jCr2qqgKDuSY0yiAMZSmuVzE905olhxi8jWwx5p3bNITL96Ng / PADEKGCEMLOKBADOHGKIFIJOMCLGJGIF_2_5_21_0.crx
 
