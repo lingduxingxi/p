@@ -1432,8 +1432,8 @@ def get_config_old(configs, local_port=10805):
 
 
 def main_proxy(local_port=10805):
-    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port88.yaml", f"{type_}_clash_config_port88.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port88.yaml", f"{type_}_clash_config_port88.yaml")
     time.sleep(2)
 
     # 启动监控进程
@@ -1613,9 +1613,9 @@ def main_proxy_log():
 
 if __name__ == "__main__":
     # os.system("taskkill /F /IM sslocal.exe")
-    main_proxy()
+    # main_proxy()
 
-    # main_proxy_log()
+    main_proxy_log()
     # start_exe()
     # sslocal1.exe -s "195.154.54.171:13355" -k "dongtaiwang.com" -b "127.0.0.1:10805" -m "aes-256-gcm"
     # sslocal1.exe -c configs.json
