@@ -35,15 +35,27 @@ today = time.strftime('%Y%m%d', time.localtime())
 # url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/refs/heads/main/all_servers.txt' #很多 作为备份
 
 
-url11_source = "https://raw.githubusercontent.com/wenxig/dongtai-sub/refs/heads/main/data/sub.txt"  #
-url11 = 'https://proxy.v2gh.com//https://raw.githubusercontent.com/wenxig/dongtai-sub/refs/heads/main/data/sub.txt' #
+# url11_source = "https://raw.githubusercontent.com/ProblemTheCode/SylphNet-public/refs/heads/main/sub/sub_plain.txt"  #
+# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/ProblemTheCode/SylphNet-public/refs/heads/main/sub/sub_plain.txt' #
+
+# url11_source = "https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY.txt"  #  可以  但100多个
+# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY.txt' #
+
+# url11_source = "https://raw.githubusercontent.com/Romaxa55/MegaV_Public/refs/heads/main/subs/all.txt"  #  可以  只有9个
+# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/Romaxa55/MegaV_Public/refs/heads/main/subs/all.txt' #
+
+url11_source = "https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/refs/heads/main/selector/random.txt"  #  可以
+url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/refs/heads/main/selector/random.txt' #
+
+
 
 
 url2_list = [
              # "https://ghfile.geekertao.top/https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt",# 不用解码  12小时
              "https://ghfile.geekertao.top/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub",# 约38分钟更新一次
-             "https://proxy.v2gh.com/https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together",# 约8分钟更新一次
-             # "https://proxy.v2gh.com/https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess",# 约1小时更新一次  有点小多
+             "https://ghfile.geekertao.top/https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together",# 约8分钟更新一次
+             "https://ghfile.geekertao.top/https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/by-country/v2ray-base64-TW.txt",# 约8分钟更新一次
+             # "https://ghfile.geekertao.top/https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess",# 约1小时更新一次  有点小多
              #
              # "https://raw.dgithub.xyz/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt" #最多  约12分钟更新一次
              ]#备用 可筛选可用的ss   镜像网站
@@ -52,6 +64,7 @@ url2_source_list = [
                     # "https://raw.githubusercontent.com/ripaojiedian/freenode/refs/heads/main/sub", #8-9 小时更新一次
                     "https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub",# 约38分钟更新一次
                     "https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together",# 约8分钟更新一次
+                    "https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/by-country/v2ray-base64-TW.txt",# 约8分钟更新一次
                     # "https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess",# 约1小时更新一次  有点小多
                     #
                     # "https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt" #最多 约12分钟更新一次
@@ -71,7 +84,7 @@ http://wanzhuanmi.cczzuu.top/node/20250525-v2ray.txt
 https://raw.githubusercontent.com/ripaojiedian/freenode/main/sub  #8-9 小时更新一次
 https://raw.dgithub.xyz/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt  最多！
 https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2  很多  #8-9 小时更新一次
-https://proxy.v2gh.com/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub    #较多  39 minutes 更新一次
+https://ghfile.geekertao.top/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub    #较多  39 minutes 更新一次
 https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together  # 8分钟 1次
 https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt   #不用解码  12小时
 https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess  # 1 hour ago  有点小多
@@ -441,8 +454,9 @@ def get_config_informationurl1(local_port):
     for i,sss in enumerate(reg_list):
         # print(i)
         # print(sss[0:3])
-        if 'ss:' not in sss[0:3] and 'ssr:' not in sss[0:3]:
-            # print('sss221',sss)
+        # if 'ss:' not in sss[0:3] and 'ssr:' not in sss[0:3]:
+        if '://' in sss:
+            print('sss446',sss)
             # print(sss)
             node_links.append(sss)
     node_links = list(dict.fromkeys(node_links))
@@ -464,7 +478,7 @@ def get_config_informationurl(local_port):
     if not node_links1:
         node_links1 = []
     try:
-        node_links2 = get_config_informationurl2(local_port)
+        # node_links2 = get_config_informationurl2(local_port)
         pass
     except:
         traceback.print_exc()
