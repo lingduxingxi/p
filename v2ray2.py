@@ -30,11 +30,25 @@ today = time.strftime('%Y%m%d', time.localtime())
 
 logging.captureWarnings(True)  # 强制取消证书验证警告
 
-url3 = "https://s3.us-west-2.amazonaws.com/zhifan2/v2ray.html"
+url3 = "https://github.com/Alvin9999-newpac/fanqiang/wiki/v2ray%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
 url2 = "https://github.com/Alvin9999-newpac/fanqiang/wiki/v2ray%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"
-url1 = "https://gitlab.com/zhifan999/fq/-/wikis/v2ray%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"  # github.com镜像
-url2_list = []
-url2_source_list = []
+url1 = "https://github.com/Alvin9999-newpac/fanqiang/wiki/v2ray%E5%85%8D%E8%B4%B9%E8%B4%A6%E5%8F%B7"  # github.com镜像
+
+
+url22_list = [
+            'https://ghfile.geekertao.top/https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY.txt',
+            'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless.txt',
+            'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan.txt',
+
+             ]#备用 可筛选可用的ss   镜像网站
+url22_source_list = [
+                    'https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY.txt',
+                    'https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless.txt',
+                    'https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan.txt',
+
+                    ]#备用 可筛选可用的ss   原生网站
+
+
 type_ = os.path.basename(__file__).replace('.py', '')
 # open_Shadowsocks1 = os.getcwd() + fr'\{type_}\Shadowsocks1.exe'
 # print('open_Shadowsocks128',open_Shadowsocks1)
@@ -205,13 +219,19 @@ def get_config_informationurl1(local_port):
             html = requests.get(url1, headers=headers, timeout=8).text
             link_url1_successful = '连接1成功！'
             print(link_url1_successful)
+            # print(html)
+            soup = BeautifulSoup(html, 'html.parser')
             # links = re.findall(r'vless://[^\s`"]+', str(html))
-            links = re.findall(r'bash\\r\\n[^\s`"]+', str(html))
-            congfig_list = []
-            print('links208',links)
+            # node_links = []
+            for pre in soup.find_all("pre"):
+                print("212pre",pre.text)
+                node_links.append(pre.text)
+            # links = re.findall(r'bash\\r\\n[^\s`"]+', str(html))
+            # congfig_list = []
+            # print('links208',links)
             plugin = ''
             # 去掉末尾空白和 \r\n
-            node_links = [item.rstrip('\\\\r\\\\n').replace('bash\\r\\n','') for item in links]
+            # node_links = [item.rstrip('\\\\r\\\\n').replace('bash\\r\\n','') for item in links]
             # print(html)
 
             break
@@ -301,13 +321,75 @@ def get_config_informationurl1(local_port):
     return node_links
 
 
+
+def get_config_informationurl2(local_port):
+    reg_list = []
+    for i,url22_source in enumerate(url22_source_list):
+        n = 0
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
+        while True:
+            print(f'使用连接{url22_source}进行更新！')
+            try:
+
+
+                if n >= 8:
+                    print('使用AI_all_auto代理88')
+                    proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
+                    try:
+                        reg = requests.get(url22_source, headers=headers,proxies=proxies, timeout=8).text
+                    except:
+                        reg = requests.get(url22_list[i], headers=headers,proxies=proxies, timeout=8).text
+                else:
+                    print('不使用代理')
+                    try:
+                        reg = requests.get(url22_list[i], headers=headers, timeout=8).text
+                    except:
+                        reg = requests.get(url22_source, headers=headers, timeout=8).text
+                # print(reg)
+                # soup = BeautifulSoup(reg, 'html.parser')
+                # reg_list.append(reg)
+                if 'DOCTYPE html' in reg:
+                    pass
+                else:
+                    reg_list += reg.split()
+                    link_url2_successful = f'连接url22_source成功！'
+                    print(link_url2_successful)
+                    break
+
+            except Exception as err:
+                print(err)
+                print(f'连接{url22_source}错误，2秒后重试！')
+                time.sleep(2)
+            # print(n)
+            if n >= 18:
+                break
+            n += 1
+
+
+
+    node_links = []
+    for i,sss in enumerate(reg_list):
+        # print(i)
+        # print(sss[0:3])
+        # if 'ss:' not in sss[0:3] and 'ssr:' not in sss[0:3]:
+        if '://' in sss:
+            print('sss446',sss)
+            # print(sss)
+            node_links.append(sss)
+    node_links = list(dict.fromkeys(node_links))
+    # print(node_links)
+    print(f'381get_config_informationurl2共有节点数目为：{len(node_links)}')
+    return node_links
+
+
+
 def get_config_informationurl(local_port):
     node_links1 = []
     node_links2 = []
     exe_name = f"{type_}.exe"
     exe_name_path = fr"{object_name}\{exe_name}"
     node_links1 = get_config_informationurl1(local_port)
-    # node_links2 = get_config_informationurl2(local_port)
+    node_links2 = get_config_informationurl2(local_port)
     node_link_list = node_links1 + node_links2
     # 解析所有节点
     valid_node_list = []
@@ -376,7 +458,12 @@ def get_config_informationurl(local_port):
         else:
             cmd_on_color.printRed(f"{link}，该节点解析错误！")
             link_err_list.append(link)
-            return
+            try:
+                b = bytes(link, encoding='utf-8')
+                node_link_list2 = base64.b64decode(b).decode().split('\n')
+            except:
+                pass
+            # return
         # sys.exit()
     kill_exe()
     cmd_on_color.printRed(f"解析错误的节点数目：{link_err_list}个，具体如下列表：\n{link_err_list}\n无效的节点数目为：{len(node_link_list) - len(average_speed_list)}个")
@@ -638,9 +725,9 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def main_proxy(local_port=10999):
-    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
-                                 f"{type_}_configs_port{local_port}.json")
-    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
+    #                              f"{type_}_configs_port{local_port}.json")
+    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -1397,122 +1484,8 @@ def url22_get_v2ray2_list(headers, url22, url22_source):
     return url_v2ray2_list
 
 
-def get_config_informationurl2(local_port):
-    reg = ''
-    soup = ''
-    n = 1
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        # "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-        "Connection": "keep-alive"  # 保持长连接，避免频繁断开
-    }
-    # url2_list = ["https://raw.githubusercontent.com/ripaojiedian/freenode/main/sub", "https://github.com/abshare3/abshare3.github.io", "https://github.com/mksshare/mksshare.github.io"]  # 备用 可筛选可用的ss   B64 解码
-    congfig_list = []
-    node_links = []
-    for i, url2 in enumerate(url2_list):
-        if 'ermaozi' in url2:  # 不用解码
-            pass
-            node_links += url22_get_v2ray2_list(headers, url2, url2_source_list[i])
-        else:
-            while True:
-                print(f'使用连接2:{url2}进行更新！')
-                try:
-                    # html = http.request('GET', url2, timeout=8, headers=headers)
-                    # link_url1_successful = '连接2成功！'
-                    # print(link_url1_successful)
-                    # break
-                    if n > 2:
-                        print('使用AI_all_auto代理88')
-                        proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                        try:
-                            reg = requests.get(url2_source_list[i], headers=headers, timeout=8, proxies=proxies).text
-                            # if 'abshare3.github.io' in url2:
-                            #     reg = requests.get('https://github.com/abshare3/abshare3.github.io', headers=headers, timeout=8, proxies=proxies).text
-                            # elif 'mksshare.github.io' in url2:
-                            #     reg = requests.get('https://github.com/mksshare/mksshare.github.io', headers=headers, timeout=8, proxies=proxies).text
-                            # else:
-                            #     reg = requests.get('https://raw.githubusercontent.com/ripaojiedian/freenode/refs/heads/main/sub', headers=headers, timeout=8, proxies=proxies).text
-                        except:
-                            traceback.print_exc()
-                            reg = requests.get(url2, headers=headers, timeout=8, proxies=proxies).text
 
-                    else:
-                        print('不使用代理')
-                        try:
-                            reg = requests.get(url2, headers=headers, timeout=8).text
-                        except:
-                            traceback.print_exc()
-                            reg = requests.get(url2_source_list[i], headers=headers, timeout=8).text
-                            # if 'abshare3.github.io' in url2:
-                            #     reg = requests.get('https://github.com/abshare3/abshare3.github.io', headers=headers, timeout=8).text
-                            # elif 'mksshare.github.io' in url2:
-                            #     reg = requests.get('https://github.com/mksshare/mksshare.github.io', headers=headers, timeout=8).text
-                            # else:
-                            #     reg = requests.get('https://raw.githubusercontent.com/ripaojiedian/freenode/refs/heads/main/sub', headers=headers, timeout=8).text
-                    link_url2_successful = '连接2成功！'
-                    print(link_url2_successful)
-                    # print('reg631',reg)
-                    soup = BeautifulSoup(reg, 'html.parser')
-                    # print('soup1192',soup)
 
-                    if '404 Not Found' not in str(soup):
-                        # continue
-                        # print('soup1197', soup)
-                        # time.sleep(188)
-                        if '<!DOCTYPE html>' in str(soup):
-                            codes = soup.find_all('code')
-                            for ii, code_ in enumerate(codes):
-                                if ii == 1:
-                                    b64_https_ = code_.text.rstrip()
-                                    print('soup_646', b64_https_)
-                                    n2 = 0
-                                    while True:
-                                        print(f'使用连接{b64_https_}进行解析！')
-                                        try:
-                                            if n2 > 2:
-                                                print('使用AI_all_auto代理88')
-                                                proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                                                soup = requests.get(b64_https_, headers=headers, timeout=8, proxies=proxies).text
-                                            else:
-                                                print('不使用代理')
-                                                soup = requests.get(b64_https_, headers=headers, timeout=8).text
-                                            link_url1_successful = f'连接{b64_https_}成功！'
-                                            print(link_url1_successful)
-                                            break
-
-                                        except Exception as err:
-                                            print(err)
-                                            print(f'连接{b64_https_}错误，2秒后重试！')
-                                            time.sleep(2)
-                                        # print(n)
-                                        if n2 >= 8:
-                                            break
-                                        n2 += 1
-                        # print('soup672',soup)
-                        b = bytes(str(soup), encoding='utf-8')
-                        b64 = base64.b64decode(b).decode().split('\n')
-
-                        for i, sss in enumerate(b64):
-                            if 'ss:' not in str(sss)[0:3] and str(sss) != '' and 'ssr://' not in str(sss):
-                                # print(i,sss)
-                                node_links.append(sss)
-                    else:
-                        cmd_on_color.printRed(f"暂时没有节点，跳过该链接{url2}，错误信息：{soup[:18]}")
-                    break
-                except Exception as err:
-                    print(err)
-                    print('连接2错误，2秒后重试！')
-                    time.sleep(2)
-                # print(n)
-                if n >= 8:
-                    # os.system('python SS1_ip2.py')
-                    break
-                n += 1
-
-    print(f'get_config_informationurl2共有节点数目为：{len(node_links)}')
-    return node_links
 
 
 def main_proxy_log():
@@ -1547,8 +1520,8 @@ def main_proxy_log():
 
 
 if __name__ == "__main__":
-    # main_proxy()
+    main_proxy()
     #
-    main_proxy_log()
+    # main_proxy_log()
     # get_config_informationurl1(10999)
     # get_config_informationurl2(10999)
