@@ -41,11 +41,30 @@ today = time.strftime('%Y%m%d', time.localtime())
 # url11_source = "https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY.txt"  #  可以  但100多个
 # url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY.txt' #
 
-# url11_source = "https://raw.githubusercontent.com/Romaxa55/MegaV_Public/refs/heads/main/subs/all.txt"  #  可以  只有9个
-# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/Romaxa55/MegaV_Public/refs/heads/main/subs/all.txt' #
 
-url11_source = "https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/refs/heads/main/selector/random.txt"  #  可以
-url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/Surfboardv2ray/Proxy-sorter/refs/heads/main/selector/random.txt' #
+# url11_source = "https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless.txt"  #  可以  但仅仅1个    150多个
+# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless.txt' #
+
+# url11_source = "https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan.txt"  #  可以  但仅仅1个    165多个
+# url11 = 'https://ghfile.geekertao.top/https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan.txt' #
+
+
+
+
+url11_list = [
+        'https://ghfile.geekertao.top/https://raw.githubusercontent.com/Romaxa55/MegaV_Public/refs/heads/main/subs/all.txt',
+        'https://ghfile.geekertao.top/https://github.com/Idolvpn/Automate-V2ray-Config-Collector/raw/refs/heads/main/configs/mix.txt',
+        'https://ghfile.geekertao.top/https://github.com/Barabama/FreeNodes/raw/8356d5838573f9f08dab4682df4ceca00ae77c1c/nodes/clashstair.txt',
+
+         ]
+url11_source_list = [
+                    "https://raw.githubusercontent.com/Romaxa55/MegaV_Public/refs/heads/main/subs/all.txt",  #  可以  只有9个
+                    "https://github.com/Idolvpn/Automate-V2ray-Config-Collector/raw/refs/heads/main/configs/mix.txt",  #  可以  但仅仅2个    66个
+                    "https://github.com/Barabama/FreeNodes/raw/8356d5838573f9f08dab4682df4ceca00ae77c1c/nodes/clashstair.txt",  #  可以 但仅仅2个  32个节点
+
+                    ]
+
+
 
 
 
@@ -407,46 +426,46 @@ def get_ss(ss_url=f'https://v2rayse.com/fs/public/{today}/kdfbypk.txt'):
 
 def get_config_informationurl1(local_port):
     reg_list = []
+    for i,url11_source in enumerate(url11_source_list):
+        n = 0
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
+        while True:
+            print(f'使用连接{url11_source}进行更新！')
+            try:
 
-    n = 0
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
-    while True:
-        print('使用连接1进行更新！')
-        try:
 
+                if n >= 8:
+                    print('使用AI_all_auto代理88')
+                    proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
+                    try:
+                        reg = requests.get(url11_source, headers=headers,proxies=proxies, timeout=8).text
+                    except:
+                        reg = requests.get(url11_list[i], headers=headers,proxies=proxies, timeout=8).text
+                else:
+                    print('不使用代理')
+                    try:
+                        reg = requests.get(url11_list[i], headers=headers, timeout=8).text
+                    except:
+                        reg = requests.get(url11_source, headers=headers, timeout=8).text
+                # print(reg)
+                # soup = BeautifulSoup(reg, 'html.parser')
+                # reg_list.append(reg)
+                if 'DOCTYPE html' in reg:
+                    pass
+                else:
+                    reg_list += reg.split()
+                    link_url2_successful = f'连接url11_source成功！'
+                    print(link_url2_successful)
+                    break
 
-            if n >= 2:
-                print('使用AI_all_auto代理88')
-                proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                try:
-                    reg = requests.get(url11_source, headers=headers,proxies=proxies, timeout=8).text
-                except:
-                    reg = requests.get(url11, headers=headers,proxies=proxies, timeout=8).text
-            else:
-                print('不使用代理')
-                try:
-                    reg = requests.get(url11, headers=headers, timeout=8).text
-                except:
-                    reg = requests.get(url11_source, headers=headers, timeout=8).text
-            # print(reg)
-            # soup = BeautifulSoup(reg, 'html.parser')
-            # reg_list.append(reg)
-            if 'DOCTYPE html' in reg:
-                pass
-            else:
-                reg_list = reg.split()
-                link_url2_successful = '连接1成功！'
-                print(link_url2_successful)
+            except Exception as err:
+                print(err)
+                print(f'连接{url11_source}错误，2秒后重试！')
+                time.sleep(2)
+            # print(n)
+            if n >= 18:
                 break
-
-        except Exception as err:
-            print(err)
-            print('连接3错误，2秒后重试！')
-            time.sleep(2)
-        # print(n)
-        if n >= 8:
-            break
-        n += 1
+            n += 1
 
 
 
@@ -478,7 +497,7 @@ def get_config_informationurl(local_port):
     if not node_links1:
         node_links1 = []
     try:
-        # node_links2 = get_config_informationurl2(local_port)
+        node_links2 = get_config_informationurl2(local_port)
         pass
     except:
         traceback.print_exc()
@@ -491,75 +510,75 @@ def get_config_informationurl(local_port):
     link_err_list = []
     node_link_list2 = []
     # print('\n'.join(node_link_list+node_link_list2))
-    while True:
-        for i,link in enumerate(node_link_list+node_link_list2):
+    # while True:
+    for i,link in enumerate(node_link_list+node_link_list2):
 
-            # if i==3 :break #测试
-            cmd_on_color.printMag(f"++++++++++++++++++++++++++处理节点进度{i+1}/{len(node_link_list)}++++++++++++++++++++++++++")
-            # cmd_on_color.printCya(f"开始处理的第{i+1}个节点b64全部信息为：{link}")
-            node = parse_node(link)
-            if node:
-                # 生成完整配置
-                config = generate_config([node], local_port)
+        # if i==3 :break #测试
+        cmd_on_color.printMag(f"++++++++++++++++++++++++++处理节点进度{i+1}/{len(node_link_list)}++++++++++++++++++++++++++")
+        # cmd_on_color.printCya(f"开始处理的第{i+1}个节点b64全部信息为：{link}")
+        node = parse_node(link)
+        if node:
+            # 生成完整配置
+            config = generate_config([node], local_port)
 
-                if config and config != -1:
-                    # 保存到文件
-                    with open(object_name + fr'\{type_}_configs_port{local_port}.json', "w", encoding='utf-8') as f:
-                        json.dump(config, f, indent=2, ensure_ascii=False)
+            if config and config != -1:
+                # 保存到文件
+                with open(object_name + fr'\{type_}_configs_port{local_port}.json', "w", encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
 
-                    with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                        config["inbounds"][0]["port"] = 88
-                        json.dump(config, f, indent=2, ensure_ascii=False)
-                    # time.sleep(2)
-                    # upload(fr'{type_}_configs_port{local_port}.json')
-                    # upload(fr'{type_}_configs_port88.json')
-                print(fr"配置文件已生成: \{type_}_configs_port{local_port}.json，开始对该节点{link}进行测速")
-                # state_ = start_exe(local_port)
-                # print('state_246', state_)#可以上网
-                # # 第一层检测
-                # if state_ == '可以上网':
-                kill_exe()
-                exe_name = f"{type_}.exe"
-                exe_name_path = fr"{object_name}\{exe_name}"
-                cmd = f'{exe_name_path} run -config {object_name}\\{type_}_configs_port{local_port}.json'
-                print('cmd531',cmd)
-                process = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    bufsize=1,  # 行缓冲
-                    text=True,
-                    encoding='utf-8',
-                    errors='replace'
-                )
+                with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
+                    config["inbounds"][0]["port"] = 88
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+                # time.sleep(2)
+                # upload(fr'{type_}_configs_port{local_port}.json')
+                # upload(fr'{type_}_configs_port88.json')
+            print(fr"配置文件已生成: \{type_}_configs_port{local_port}.json，开始对该节点{link}进行测速")
+            # state_ = start_exe(local_port)
+            # print('state_246', state_)#可以上网
+            # # 第一层检测
+            # if state_ == '可以上网':
+            kill_exe()
+            exe_name = f"{type_}.exe"
+            exe_name_path = fr"{object_name}\{exe_name}"
+            cmd = f'{exe_name_path} run -config {object_name}\\{type_}_configs_port{local_port}.json'
+            print('cmd531',cmd)
+            process = subprocess.Popen(
+                cmd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                bufsize=1,  # 行缓冲
+                text=True,
+                encoding='utf-8',
+                errors='replace'
+            )
 
-                # state, average_speed = download_files.download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", local_port)
-                average_speed = download_files.test_speed(proxy_port=local_port)
-                # 第二层检测
-                if average_speed == '-1.000':
-                    cmd_on_color.printRed(f"{link[:18]}该节点不可以上网，准备换下一个节点！252")
-                elif float(average_speed) < 2.000:
-                    cmd_on_color.printBlu(f'{link[:18]}该节点速度小于【2M】，不过【可以上网】，其平均速度为{average_speed}MB/s')
-                    backup_valid_node_list.append(link)
-                    backup_average_speed_list.append(average_speed)
-                else:
-                    cmd_on_color.printGre(f'{link[:18]}该节点可以上网，其平均速度为{average_speed}MB/s')
-                    valid_node_list.append(link)
-                    average_speed_list.append(average_speed)
-                # else:
-                #     cmd_on_color.printRed(f"{link[:8]}该节点不可以上网，准备换下一个节点！258")
+            # state, average_speed = download_files.download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", local_port)
+            average_speed = download_files.test_speed(proxy_port=local_port)
+            # 第二层检测
+            if average_speed == '-1.000':
+                cmd_on_color.printRed(f"{link[:18]}该节点不可以上网，准备换下一个节点！252")
+            elif float(average_speed) < 2.000:
+                cmd_on_color.printBlu(f'{link[:18]}该节点速度小于【2M】，不过【可以上网】，其平均速度为{average_speed}MB/s')
+                backup_valid_node_list.append(link)
+                backup_average_speed_list.append(average_speed)
             else:
-                cmd_on_color.printRed(f"{link}，该节点解析错误！")
-                link_err_list.append(link)
-                try:
-                    b = bytes(link, encoding='utf-8')
-                    node_link_list2 = base64.b64decode(b).decode().split('\n')
-                except:
-                    pass
-            # sys.exit()
-        if '该节点解析错误' not in link_err_list:
-            break
+                cmd_on_color.printGre(f'{link[:18]}该节点可以上网，其平均速度为{average_speed}MB/s')
+                valid_node_list.append(link)
+                average_speed_list.append(average_speed)
+            # else:
+            #     cmd_on_color.printRed(f"{link[:8]}该节点不可以上网，准备换下一个节点！258")
+        else:
+            cmd_on_color.printRed(f"{link}，该节点解析错误！")
+            link_err_list.append(link)
+            try:
+                b = bytes(link, encoding='utf-8')
+                node_link_list2 = base64.b64decode(b).decode().split('\n')
+            except:
+                pass
+        # sys.exit()
+        # if '该节点解析错误' not in link_err_list:
+        #     break
 
     kill_exe()
     cmd_on_color.printRed(f"解析错误的节点数目：{link_err_list}个，具体如下列表：\n{link_err_list}\n无效的节点数目为：{len(node_link_list)-len(average_speed_list)}个")
@@ -819,9 +838,9 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def main_proxy(local_port=10822):
-    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
-    #                              f"{type_}_configs_port{local_port}.json")
-    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
+                                 f"{type_}_configs_port{local_port}.json")
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
     time.sleep(2)
 
     # 启动监控进程
@@ -1693,8 +1712,8 @@ def main_proxy_log():
 
 
 if __name__ == "__main__":
-    main_proxy()
+    # main_proxy()
 
-    # main_proxy_log()
+    main_proxy_log()
     # get_config_informationurl1(10822)
     # get_config_informationurl2(10822)
