@@ -1488,5 +1488,5 @@ if __name__ == "__main__":
     # main_proxy()
 
     # main_proxy_log()
-    # get_config_informationurl1(8891)
-    get_config_informationurl2(8891)
+    get_config_informationurl1(8891)
+    # get_config_informationurl2(8891)
