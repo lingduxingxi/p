@@ -335,11 +335,15 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
                         if port_coincide_state:
                             proxies = {'http': f'socks5h://127.0.0.1:{local_port}',
                                        'https': f'socks5h://127.0.0.1:{local_port}'}
+                            # proxies = {'http': f'socks5://127.0.0.1:{local_port}',
+                            #            'https': f'socks5://127.0.0.1:{local_port}'}
                             success = False
                             port8100_state = ''
                             for attempt in range(attempt_count):
                                 try:
-                                    resp = requests.get(test_url, proxies=proxies, timeout=8)
+                                    # resp = requests.get(test_url, proxies=proxies, timeout=8)
+                                    resp = requests.get(test_url, proxies=proxies, timeout=(10, 15), verify=False,
+                                                        headers={'User-Agent': 'Mozilla/5.0'})
                                     if resp.status_code == 200:
                                         with global_lock:
                                             network_err = 1
@@ -347,9 +351,16 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
                                             network_status['alive'] = True
                                         connection_success_printed = True
                                         log_manager.write(
-                                            f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}||端口{local_port}（{exe_name}）【{type_}】连接成功！可以上网啦！207==>>{line}\n')
+                                            f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}||'
+                                            f'端口{local_port}（{exe_name}）【{type_}】'
+                                            f'连接成功！可以上网啦！HTTP状态码：{resp.status_code}\n'
+                                        )
+
                                         cmd_on_color.printGre(
-                                            f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}||端口{local_port}（{exe_name}）【{type_}】连接成功！可以上网啦！207')
+                                            f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}||'
+                                            f'端口{local_port}（{exe_name}）【{type_}】'
+                                            f'连接成功！可以上网啦！207'
+                                        )
                                         if 'GoflywayTools' in str(type_) and '8100' in str(local_port):
                                             write_with_limit(port8100_success,
                                                              f"{datetime.datetime.now()}连接成功")
