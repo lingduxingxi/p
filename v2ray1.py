@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import ast
 import re
@@ -21,7 +21,8 @@ from typing import Dict
 
 import json
 import base64
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import urlparse, urlsplit, parse_qs, unquote
+from html import unescape as html_unescape
 
 import download_files
 from notification_simulator import show_notification
@@ -123,6 +124,7 @@ logging.captureWarnings(True)  # 强制取消证书验证警告
 
 
 
+# 固定项目名称：即使此文件临时命名为其他名称，也继续使用原来的 v2ray1.exe/config/log 文件名。
 type_ = os.path.basename(__file__).replace('.py', '')
 # open_Shadowsocks1 = os.getcwd() + fr'\{type_}\Shadowsocks1.exe'
 # print('open_Shadowsocks128',open_Shadowsocks1)
@@ -474,10 +476,9 @@ def get_config_informationurl1(local_port):
         # print(i)
         # print(sss[0:3])
         # if 'ss:' not in sss[0:3] and 'ssr:' not in sss[0:3]:
-        if '://' in sss:
-            print('sss446',sss)
-            # print(sss)
-            node_links.append(sss)
+        if is_candidate_node_link(sss):
+            print('识别到节点链接:', sss[:100])
+            node_links.append(normalize_node_link(sss))
     node_links = list(dict.fromkeys(node_links))
     # print(node_links)
     print(f'541get_config_informationurl1共有节点数目为：{len(node_links)}')
@@ -508,6 +509,7 @@ def get_config_informationurl(local_port):
     valid_node_list = []
     average_speed_list = []
     link_err_list = []
+    skipped_node_list = []
     node_link_list2 = []
     # print('\n'.join(node_link_list+node_link_list2))
     # while True:
@@ -518,8 +520,13 @@ def get_config_informationurl(local_port):
         # cmd_on_color.printCya(f"开始处理的第{i+1}个节点b64全部信息为：{link}")
         node = parse_node(link)
         if node:
-            # 生成完整配置
-            config = generate_config([node], local_port)
+            # 根据协议生成 Xray 或 sing-box 原生配置
+            try:
+                config, selected_core = generate_node_config(link, node, local_port)
+            except Exception as config_error:
+                print(f"生成节点配置失败 [{get_node_scheme(link)}]: {config_error}")
+                link_err_list.append(link)
+                continue
 
             if config and config != -1:
                 # 保存到文件
@@ -527,8 +534,9 @@ def get_config_informationurl(local_port):
                     json.dump(config, f, indent=2, ensure_ascii=False)
 
                 with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                    config["inbounds"][0]["port"] = 88
-                    json.dump(config, f, indent=2, ensure_ascii=False)
+                    config88 = json.loads(json.dumps(config, ensure_ascii=False))
+                    set_config_inbound_port(config88, 88)
+                    json.dump(config88, f, indent=2, ensure_ascii=False)
                 # time.sleep(2)
                 # upload(fr'{type_}_configs_port{local_port}.json')
                 # upload(fr'{type_}_configs_port88.json')
@@ -537,24 +545,33 @@ def get_config_informationurl(local_port):
             # print('state_246', state_)#可以上网
             # # 第一层检测
             # if state_ == '可以上网':
-            kill_exe()
-            exe_name = f"{type_}.exe"
-            exe_name_path = fr"{object_name}\{exe_name}"
-            cmd = f'{exe_name_path} run -config {object_name}\\{type_}_configs_port{local_port}.json'
-            print('cmd531',cmd)
+            kill_all_proxy_cores()
+            if selected_core == "sing-box":
+                exe_name = SING_BOX_EXE_NAME
+                exe_name_path = SING_BOX_EXE_PATH
+                cmd = [exe_name_path, "run", "-c", os.path.join(object_name, f"{type_}_configs_port{local_port}.json")]
+            else:
+                exe_name = f"{type_}.exe"
+                exe_name_path = os.path.join(object_name, exe_name)
+                cmd = [exe_name_path, "run", "-config", os.path.join(object_name, f"{type_}_configs_port{local_port}.json")]
+            print("启动核心命令:", subprocess.list2cmdline(cmd))
+            if not os.path.isfile(exe_name_path):
+                message = f"缺少核心程序 {exe_name}，该节点暂时跳过。请将核心放到程序目录：{exe_name_path}"
+                cmd_on_color.printRed(message)
+                link_err_list.append(link)
+                continue
             process = subprocess.Popen(
                 cmd,
-                shell=True,
-                stdout=subprocess.PIPE,
+                cwd=object_name,
+                shell=False,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
-                bufsize=1,  # 行缓冲
-                text=True,
-                encoding='utf-8',
-                errors='replace'
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
             )
 
             # state, average_speed = download_files.download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", local_port)
             average_speed = download_files.test_speed(proxy_port=local_port)
+            kill_all_proxy_cores()
             # 第二层检测
             if average_speed == '-1.000':
                 cmd_on_color.printRed(f"{link[:18]}该节点不可以上网，准备换下一个节点！252")
@@ -569,19 +586,30 @@ def get_config_informationurl(local_port):
             # else:
             #     cmd_on_color.printRed(f"{link[:8]}该节点不可以上网，准备换下一个节点！258")
         else:
-            cmd_on_color.printRed(f"{link}，该节点解析错误！")
-            link_err_list.append(link)
-            try:
-                b = bytes(link, encoding='utf-8')
-                node_link_list2 = base64.b64decode(b).decode().split('\n')
-            except:
-                pass
+            scheme = get_node_scheme(link)
+            if scheme and get_node_core(link) == "unsupported":
+                skipped_node_list.append(link)
+                cmd_on_color.printBlu(
+                    f"已识别 {scheme}，但当前 Xray + sing-box 双核心配置暂不支持，跳过：{link[:100]}"
+                )
+            elif not scheme:
+                # 网站地址、Website= 元信息、公告文字等不是节点，不计入解析错误
+                skipped_node_list.append(link)
+                print(f"跳过非节点订阅内容：{link[:100]}")
+            else:
+                cmd_on_color.printRed(f"{link}，该节点解析错误！")
+                link_err_list.append(link)
         # sys.exit()
         # if '该节点解析错误' not in link_err_list:
         #     break
 
-    kill_exe()
-    cmd_on_color.printRed(f"解析错误的节点数目：{link_err_list}个，具体如下列表：\n{link_err_list}\n无效的节点数目为：{len(node_link_list)-len(average_speed_list)}个")
+    kill_all_proxy_cores()
+    cmd_on_color.printRed(
+        f"真正解析失败的节点数目：{len(link_err_list)}个，具体如下：\n{link_err_list}"
+    )
+    cmd_on_color.printBlu(
+        f"跳过的非节点/暂不支持节点数目：{len(skipped_node_list)}个"
+    )
     cmd_on_color.printCya(f"总共需要处理的节点数目：{len(node_link_list)}")
     cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效节点的速度列表：{average_speed_list}')
     if len(average_speed_list) == 0:#如果节点为0个  就切换备用节点
@@ -609,8 +637,10 @@ def get_config_informationurl(local_port):
             very_good_node = valid_node_list[max_index]
             cmd_on_color.printBlu(f"速度最快的节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
             node = parse_node(very_good_node)
-            very_good_config = generate_config([node], local_port)
-            return very_good_config
+            if node:
+                very_good_config, _best_core = generate_node_config(very_good_node, node, local_port)
+                return very_good_config
+            return -1
 
 
 def download_file_state(file_path, url, proxy_port):
@@ -738,11 +768,14 @@ def kill_exe(exe_name = f"{type_}.exe"):
 port88_err_num = 1
 def start_exe(local_port, run_type='单独', err_node_number=1,show_notification_state = True):
     global port88_err_num
-    if run_type=='所有':
-        exe_name = f"v2ray_all.exe"
+    file_path = object_name + fr'\{type_}_configs_port{local_port}.json'
+    if run_type == '所有':
+        exe_name = "v2ray_all.exe"
+        core_kind = "xray"
     else:
-        exe_name = f"{type_}.exe"
-    exe_name_path = fr"{object_name}\{exe_name}"
+        core_kind = detect_config_core(file_path) if os.path.exists(file_path) else "xray"
+        exe_name = SING_BOX_EXE_NAME if core_kind == "sing-box" else f"{type_}.exe"
+    exe_name_path = os.path.join(object_name, exe_name)
     print(f'开始启动{exe_name}')
     # if '表示子进程已经终止' in state:
     #     today_num = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
@@ -763,7 +796,11 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
             print(f"文件 '{file_path}' 存在")
             for i in range(node_int):
                 # cmd = f'"{exe_name_path}" -c "{object_name}\\{type_}_configs_port{local_port}.json" -vvv'
-                cmd = f'"{exe_name_path}" run -config "{object_name}\\{type_}_configs_port{local_port}.json"'  # v2ray1.exe run -config config.json
+                config_arg = os.path.join(object_name, f"{type_}_configs_port{local_port}.json")
+                if core_kind == "sing-box":
+                    cmd = subprocess.list2cmdline([exe_name_path, "run", "-c", config_arg])
+                else:
+                    cmd = subprocess.list2cmdline([exe_name_path, "run", "-config", config_arg])
                 state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, object_name, exe_name_path,err_node_number,show_notification_state))
                 if '表示子进程已经终止' in state or '端口冲突' in state:
                     port88_err_num+=1
@@ -805,20 +842,23 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
                                     very_good_node = valid_node_list[max_index]
                                     cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
                                     node = parse_node(very_good_node)
-                                    very_good_config = generate_config([node], local_port)
+                                    very_good_config, core_kind = generate_node_config(very_good_node, node, local_port)
+                                    exe_name = SING_BOX_EXE_NAME if core_kind == "sing-box" else f"{type_}.exe"
+                                    exe_name_path = os.path.join(object_name, exe_name)
                                     if very_good_config and very_good_config != -1:
                                         # 保存到文件
                                         with open(object_name + fr'\{type_}_configs_port{local_port}.json', "w", encoding='utf-8') as f:
                                             json.dump(very_good_config, f, indent=2, ensure_ascii=False)
 
                                         with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                                            very_good_config["inbounds"][0]["port"] = 88
-                                            json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                                            config88 = json.loads(json.dumps(very_good_config, ensure_ascii=False))
+                                            set_config_inbound_port(config88, 88)
+                                            json.dump(config88, f, indent=2, ensure_ascii=False)
                                         # time.sleep(2)
                                         # upload(fr'{type_}_configs_port{local_port}.json')
                                         # upload(fr'{type_}_configs_port88.json')
                                     print(f'开始杀死进程{exe_name}')
-                                    kill_exe()  # exe_name, exe_name_path, object_name
+                                    kill_all_proxy_cores()  # 停止 Xray 和 sing-box
                         except:
                             state = f'不可以上网，配置文件不存在'
         else:
@@ -845,7 +885,7 @@ def main_proxy(local_port=10822):
 
     # 启动监控进程
     subprocess.Popen([sys.executable, "monitor.py", str(pid), f"{type_}"])
-    kill_exe()
+    kill_all_proxy_cores()
 
 
 
@@ -869,13 +909,14 @@ def main_proxy(local_port=10822):
                 json.dump(very_good_config, f, indent=2, ensure_ascii=False)
 
             with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                very_good_config["inbounds"][0]["port"] = 88
-                json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                config88 = json.loads(json.dumps(very_good_config, ensure_ascii=False))
+                set_config_inbound_port(config88, 88)
+                json.dump(config88, f, indent=2, ensure_ascii=False)
             # time.sleep(2)
             # upload(fr'{type_}_configs_port{local_port}.json')
             # upload(fr'{type_}_configs_port88.json')
         print(f'575开始杀死进程{exe_name}')
-        kill_exe()  # exe_name, exe_name_path, object_name
+        kill_all_proxy_cores()  # exe_name, exe_name_path, object_name
         try:
             with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
                 valid_node_list = eval(f.read())
@@ -883,7 +924,7 @@ def main_proxy(local_port=10822):
         except:
             node_index = 0
     else:
-        kill_exe()
+        kill_all_proxy_cores()
         while True:
             try:
                 with open(fr'{object_name_output_log}/{type_}_valid_node_list_sorted_data.txt', 'r+', encoding='utf-8') as f:
@@ -902,7 +943,7 @@ def main_proxy(local_port=10822):
                 very_good_node = valid_node_list[max_index]
                 cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
                 node = parse_node(very_good_node)
-                very_good_config = generate_config([node], local_port)
+                very_good_config, _selected_core = generate_node_config(very_good_node, node, local_port)
 
         if very_good_config and very_good_config != -1:
             # 保存到文件
@@ -910,8 +951,9 @@ def main_proxy(local_port=10822):
                 json.dump(very_good_config, f, indent=2, ensure_ascii=False)
 
             with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                very_good_config["inbounds"][0]["port"] = 88
-                json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                config88 = json.loads(json.dumps(very_good_config, ensure_ascii=False))
+                set_config_inbound_port(config88, 88)
+                json.dump(config88, f, indent=2, ensure_ascii=False)
             # time.sleep(2)
             # # upload(fr'{type_}_configs_port{local_port}.json')
             # # upload(fr'{type_}_configs_port88.json')
@@ -936,7 +978,7 @@ def main_proxy(local_port=10822):
                         # config = get_config_informationurl3()
                     else:##  只是 不可以上网
                         cmd_on_color.printRed(f'{exe_name}第{i + 1}个节点无法上网，准备切换第{i + 2}个节点')
-                        kill_exe()
+                        kill_all_proxy_cores()
                         while True:
                             try:
                                 with open(fr'{object_name_output_log}/{type_}_valid_node_list_sorted_data.txt', 'r+', encoding='utf-8') as f:
@@ -955,7 +997,7 @@ def main_proxy(local_port=10822):
                                 very_good_node = valid_node_list[max_index]
                                 cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
                                 node = parse_node(very_good_node)
-                                very_good_config = generate_config([node], local_port)
+                                very_good_config, _selected_core = generate_node_config(very_good_node, node, local_port)
                     # print('very_good_config596',very_good_config)
                     if very_good_config and very_good_config!=-1:
                         # 保存到文件
@@ -963,14 +1005,15 @@ def main_proxy(local_port=10822):
                             json.dump(very_good_config, f, indent=2, ensure_ascii=False)
 
                         with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                            very_good_config["inbounds"][0]["port"] = 88
-                            json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                            config88 = json.loads(json.dumps(very_good_config, ensure_ascii=False))
+                            set_config_inbound_port(config88, 88)
+                            json.dump(config88, f, indent=2, ensure_ascii=False)
                         # time.sleep(2)
                         # # upload(fr'{type_}_configs_port{local_port}.json')
                         # # upload(fr'{type_}_configs_port88.json')
 
                     print(f'开始杀死进程{exe_name}')
-                    kill_exe()  # exe_name, exe_name_path, object_name
+                    kill_all_proxy_cores()  # exe_name, exe_name_path, object_name
                 if state_ == f'有一个在运行，不能同时运行2个':
                     def popup():
                         win32api.MessageBox(None, f'有一个在运行，不能同时运行2个{type_}', '来自FSO的警告', win32con.MB_ICONWARNING + win32con.MB_SERVICE_NOTIFICATION)
@@ -986,13 +1029,14 @@ def main_proxy(local_port=10822):
                     json.dump(very_good_config, f, indent=2, ensure_ascii=False)
 
                 with open(object_name + fr'\{type_}_configs_port88.json', "w", encoding='utf-8') as f:
-                    very_good_config["inbounds"][0]["port"] = 88
-                    json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                    config88 = json.loads(json.dumps(very_good_config, ensure_ascii=False))
+                    set_config_inbound_port(config88, 88)
+                    json.dump(config88, f, indent=2, ensure_ascii=False)
                 # time.sleep(2)
                 # upload(fr'{type_}_configs_port{local_port}.json')
                 # upload(fr'{type_}_configs_port88.json')
             print(f'开始杀死进程{exe_name}')
-            kill_exe()  # exe_name, exe_name_path, object_name
+            kill_all_proxy_cores()  # exe_name, exe_name_path, object_name
             if n>18:
                 n = 0
                 download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
@@ -1022,51 +1066,235 @@ def main_proxy(local_port=10822):
 
 
 def parse_vmess(vmess_link):
-    """解析 VMess 链接（带错误处理）"""
+    """
+    解析 VMess 节点。
+
+    支持：
+    1. 标准 vmess://Base64(JSON)#备注
+    2. URL-safe Base64 和缺少填充的 Base64
+    3. UUID@服务器:端口?参数#备注 形式
+
+    注意：
+    第3种形式并非传统 VMess JSON 格式。
+    其结构属于 VLESS 风格，因此按 VLESS 出站生成。
+    """
     try:
-        # 提取 Base64 部分并解码
-        vmess_json = base64.b64decode(vmess_link[8:] + '=' * (-len(vmess_link[8:]) % 4)).decode('utf-8')
+        if not isinstance(vmess_link, str):
+            return None
+
+        vmess_link = vmess_link.strip()
+        if not vmess_link.lower().startswith("vmess://"):
+            return None
+
+        # 去除协议头
+        content = vmess_link[8:].strip()
+
+        if not content:
+            return None
+
+        # -------------------------------------------------
+        # 第一种：UUID@服务器:端口 URI 风格
+        # -------------------------------------------------
+        if "@" in content.split("#", 1)[0]:
+
+            # 把备注、查询参数和服务器信息分开
+            parsed = urlsplit("vless://" + content)
+
+            address = parsed.hostname
+            port = parsed.port
+            user_id = unquote(parsed.username or "")
+            query = parse_qs(parsed.query)
+
+            if not address or not port or not user_id:
+                print("VMess URI风格节点缺少服务器地址、端口或UUID")
+                return None
+
+            network = query.get("type", ["tcp"])[0].lower()
+            security = query.get("security", ["none"])[0].lower()
+            host = query.get("host", [""])[0]
+            path = query.get("path", [""])[0]
+            sni = query.get("sni", [""])[0]
+            fingerprint = query.get("fp", [""])[0]
+
+            stream_settings = {
+                "network": network,
+                "security": security
+            }
+
+            if security == "tls":
+                stream_settings["tlsSettings"] = {
+                    "serverName": sni or host or address,
+                    "fingerprint": fingerprint,
+                    "allowInsecure": query.get(
+                        "allowInsecure", ["0"]
+                    )[0] == "1"
+                }
+            elif security == "reality":
+                stream_settings["realitySettings"] = {
+                    "serverName": sni or host or address,
+                    "fingerprint": fingerprint or "chrome",
+                    "publicKey": query.get("pbk", [""])[0],
+                    "shortId": query.get("sid", [""])[0],
+                    "spiderX": query.get("spx", ["/"])[0]
+                }
+
+            if network == "ws":
+                stream_settings["wsSettings"] = {
+                    "path": path or "/",
+                    "headers": {"Host": host} if host else {}
+                }
+
+            elif network == "httpupgrade":
+                stream_settings["httpupgradeSettings"] = {
+                    "path": path or "/",
+                    "host": host or address
+                }
+
+            elif network == "grpc":
+                stream_settings["grpcSettings"] = {
+                    "serviceName": query.get(
+                        "serviceName", [path.lstrip("/")]
+                    )[0]
+                }
+
+            elif network in ("tcp", "raw"):
+                stream_settings["network"] = "tcp"
+                stream_settings["tcpSettings"] = {
+                    "header": {
+                        "type": query.get("headerType", ["none"])[0]
+                    }
+                }
+
+            return {
+                "protocol": "vless",
+                "settings": {
+                    "vnext": [{
+                        "address": address,
+                        "port": int(port),
+                        "users": [{
+                            "id": user_id,
+                            "encryption": "none",
+                            "flow": query.get("flow", [""])[0]
+                        }]
+                    }]
+                },
+                "streamSettings": stream_settings,
+                "tag": unquote(parsed.fragment or "vless_uri_node")
+            }
+
+        # -------------------------------------------------
+        # 第二种：标准 VMess Base64 JSON
+        # -------------------------------------------------
+
+        # 必须先去掉 #备注，不能把备注一起进行 Base64 解码
+        b64_part = content.split("#", 1)[0].strip()
+
+        # 某些订阅使用 URL-safe Base64
+        b64_part = b64_part.replace("-", "+").replace("_", "/")
+
+        # 清除可能出现的空白字符
+        b64_part = "".join(b64_part.split())
+
+        # 补齐 Base64
+        b64_part += "=" * (-len(b64_part) % 4)
+
+        # 解码
+        decoded_bytes = base64.b64decode(b64_part)
+
+        # UTF-8 解码
+        vmess_json = decoded_bytes.decode("utf-8-sig")
+
         vmess = json.loads(vmess_json)
 
-        # 处理非法 alterId
-        alter_id = 0
-        if "aid" in vmess:
-            try:
-                alter_id = int(vmess["aid"])
-            except (ValueError, TypeError):
-                alter_id = 0  # 默认值
+        if not isinstance(vmess, dict):
+            print("VMess JSON格式错误")
+            return None
 
-        # 构建有效配置
+        # 必要字段检查
+        address = vmess.get("add") or vmess.get("address")
+        port = vmess.get("port")
+        user_id = vmess.get("id")
+
+        if not address or not port or not user_id:
+            print("VMess节点缺少 add、port 或 id")
+            return None
+
+        # alterId
+        try:
+            alter_id = int(vmess.get("aid", 0))
+        except (ValueError, TypeError):
+            alter_id = 0
+
+        # 端口
+        port = int(port)
+
+        # 网络类型
+        network = str(vmess.get("net", "tcp")).lower()
+
+        # TLS
+        tls_value = str(vmess.get("tls", "")).lower()
+        security = "tls" if tls_value in ("tls", "true") else "none"
+
+        host = vmess.get("host", "")
+        path = vmess.get("path", "")
+
+        stream_settings = {
+            "network": network,
+            "security": security
+        }
+
+        if security == "tls":
+            stream_settings["tlsSettings"] = {
+                "serverName": vmess.get("sni") or host or address,
+                "allowInsecure": str(
+                    vmess.get("allowInsecure", "0")
+                ).lower() in ("1", "true")
+            }
+
+        if network == "ws":
+            stream_settings["wsSettings"] = {
+                "path": path or "/",
+                "headers": {"Host": host} if host else {}
+            }
+
+        elif network == "httpupgrade":
+            stream_settings["httpupgradeSettings"] = {
+                "path": path or "/",
+                "host": host or address
+            }
+
+        elif network == "grpc":
+            stream_settings["grpcSettings"] = {
+                "serviceName": vmess.get("serviceName", "")
+            }
+
+        elif network in ("tcp", "raw"):
+            stream_settings["network"] = "tcp"
+            stream_settings["tcpSettings"] = {
+                "header": {
+                    "type": vmess.get("type", "none")
+                }
+            }
+
         return {
             "protocol": "vmess",
             "settings": {
                 "vnext": [{
-                    "address": vmess["add"],
-                    "port": int(vmess["port"]),
+                    "address": address,
+                    "port": port,
                     "users": [{
-                        "id": vmess["id"],
+                        "id": user_id,
                         "alterId": alter_id,
                         "security": vmess.get("scy", "auto")
                     }]
                 }]
             },
-            "streamSettings": {
-                "network": vmess.get("net", "tcp"),
-                "security": vmess.get("tls", ""),
-                "tcpSettings": {
-                    "header": {
-                        "type": vmess.get("type", "none")
-                    }
-                } if vmess.get("net") == "tcp" else None,
-                "wsSettings": {
-                    "path": vmess.get("path", ""),
-                    "headers": {"Host": vmess.get("host", "")}
-                } if vmess.get("net") == "ws" else None
-            },
+            "streamSettings": stream_settings,
             "tag": unquote(vmess.get("ps", "vmess_node"))
         }
+
     except Exception as e:
-        print(f"VMess 解析失败: {str(e)}")
+        print(f"VMess 解析失败: {type(e).__name__}: {str(e)}")
         return None
 
 def parse_trojan(trojan_link):
@@ -1235,22 +1463,119 @@ def parse_hysteria2(hysteria2_link):
 
 
 def parse_shadowsocks(ss_link):
-    """解析 Shadowsocks (SS) 链接"""
-    if not ss_link.startswith('ss://'):
-        return None
+    """
+    解析 Shadowsocks 节点。
 
-    # 处理 SS 格式：ss://method:password@host:port#name
+    支持：
+    1. SIP002:
+       ss://BASE64(method:password)@host:port#name
+
+    2. 旧式:
+       ss://BASE64(method:password@host:port)#name
+
+    3. 明文形式:
+       ss://method:password@host:port#name
+
+    同时支持 URL-safe Base64 和缺失填充。
+    """
+
+    def decode_base64_text(value):
+        """兼容标准 Base64、URL-safe Base64 和缺失填充。"""
+        value = "".join(str(value).split())
+        value = value.replace("-", "+").replace("_", "/")
+        value += "=" * (-len(value) % 4)
+
+        decoded = base64.b64decode(value)
+        return decoded.decode("utf-8-sig")
+
     try:
-        # 提取 base64 部分（去掉 ss:// 前缀）
-        b64_part = ss_link[5:].split('#')[0]
-        # 补齐 base64 填充
-        b64_part += '=' * (-len(b64_part) % 4)
-        decoded = base64.b64decode(b64_part).decode('utf-8')
+        if not isinstance(ss_link, str):
+            return None
 
-        # 分割 method:password 和 host:port
-        auth, server = decoded.split('@')
-        method, password = auth.split(':')
-        host, port = server.split(':')
+        ss_link = ss_link.strip()
+
+        if not ss_link.lower().startswith("ss://"):
+            return None
+
+        parsed = urlsplit(ss_link)
+
+        # 节点备注
+        tag = unquote(parsed.fragment or "ss_node")
+
+        # -------------------------------------------------
+        # 第一种：SIP002 格式
+        # ss://BASE64(method:password)@host:port
+        # -------------------------------------------------
+
+        if parsed.hostname and parsed.port:
+
+            host = parsed.hostname
+            port = int(parsed.port)
+
+            # 取出 @ 前面的认证部分
+            user_info = parsed.netloc.rsplit("@", 1)[0]
+
+            # 去除可能存在的用户信息百分号编码
+            user_info = unquote(user_info)
+
+            if ":" in user_info and not user_info.startswith(
+                ("ey",)
+            ):
+                # 明文 method:password
+                auth = user_info
+            else:
+                # Base64 method:password
+                auth = decode_base64_text(user_info)
+
+            if ":" not in auth:
+                print("SS认证信息缺少 method:password")
+                return None
+
+            method, password = auth.split(":", 1)
+
+        else:
+            # -------------------------------------------------
+            # 第二种：旧式完整 Base64 格式
+            # ss://BASE64(method:password@host:port)
+            # -------------------------------------------------
+
+            b64_part = ss_link[5:].split("#", 1)[0]
+            b64_part = b64_part.split("?", 1)[0]
+
+            decoded = decode_base64_text(b64_part)
+
+            if "@" not in decoded:
+                print("SS旧式链接缺少 @ 分隔符")
+                return None
+
+            auth, server = decoded.rsplit("@", 1)
+
+            if ":" not in auth:
+                print("SS旧式链接缺少 method:password")
+                return None
+
+            method, password = auth.split(":", 1)
+
+            # 服务器地址和端口
+            server_parsed = urlsplit("//" + server)
+
+            host = server_parsed.hostname
+            port = server_parsed.port
+
+            if not host or not port:
+                print("SS旧式链接服务器地址或端口无效")
+                return None
+
+        # -------------------------------------------------
+        # 最终检查
+        # -------------------------------------------------
+
+        method = method.strip()
+        password = password.strip()
+
+        if not method or not password or not host or not port:
+            print("SS节点信息不完整")
+            return None
 
         return {
             "protocol": "shadowsocks",
@@ -1263,10 +1588,11 @@ def parse_shadowsocks(ss_link):
                     "level": 0
                 }]
             },
-            "tag": unquote(ss_link.split('#')[1]) if '#' in ss_link else "ss_node"
+            "tag": tag
         }
+
     except Exception as e:
-        print(f"SS 解析失败: {str(e)}")
+        print(f"SS 解析失败: {type(e).__name__}: {str(e)}")
         return None
 
 
@@ -1315,22 +1641,26 @@ def parse_shadowsocksr(ssr_link):
 
 
 def parse_socks(socks_link):
-    """解析 SOCKS 链接"""
-    parsed = urlparse(socks_link)
-    if not parsed.scheme.startswith('socks'):
+    """解析 SOCKS4/SOCKS5/SOCKS5H 链接。"""
+    parsed = urlsplit(socks_link)
+    if parsed.scheme.lower() not in ("socks", "socks4", "socks5", "socks5h"):
         return None
 
-    # socks4://user:pass@host:port
-    # socks5://user:pass@host:port
-    auth = parsed.netloc.split('@')[0] if '@' in parsed.netloc else None
-    server = parsed.netloc.split('@')[-1]
+    host = parsed.hostname
+    port = parsed.port
+    if not host or port is None:
+        return None
 
-    username = None
-    password = None
-    if auth and ':' in auth:
-        username, password = auth.split(':', 1)
+    username = unquote(parsed.username) if parsed.username else None
+    password = unquote(parsed.password) if parsed.password else None
 
-    host, port = server.split(':')
+    users = []
+    if username is not None:
+        users.append({
+            "user": username,
+            "pass": password or "",
+            "level": 0
+        })
 
     return {
         "protocol": "socks",
@@ -1338,11 +1668,7 @@ def parse_socks(socks_link):
             "servers": [{
                 "address": host,
                 "port": int(port),
-                "users": [{
-                    "user": username or "",
-                    "pass": password or "",
-                    "level": 0
-                }] if username else []
+                "users": users
             }]
         },
         "tag": unquote(parsed.fragment) if parsed.fragment else "socks_node"
@@ -1350,20 +1676,22 @@ def parse_socks(socks_link):
 
 
 def parse_http(http_link):
-    """解析 HTTP/HTTPS 代理链接"""
-    parsed = urlparse(http_link)
-    if parsed.scheme not in ('http', 'https'):
+    """解析 HTTP/HTTPS 代理分享链接；普通网页 URL 不会被当成代理。"""
+    parsed = urlsplit(http_link)
+    if parsed.scheme.lower() not in ("http", "https"):
         return None
 
-    auth = parsed.netloc.split('@')[0] if '@' in parsed.netloc else None
-    server = parsed.netloc.split('@')[-1]
+    host = parsed.hostname
+    port = parsed.port
+    if not host or port is None:
+        return None
 
-    username = None
-    password = None
-    if auth and ':' in auth:
-        username, password = auth.split(':', 1)
+    username = unquote(parsed.username) if parsed.username else None
+    password = unquote(parsed.password) if parsed.password else None
 
-    host, port = server.split(':')
+    users = []
+    if username is not None:
+        users.append({"user": username, "pass": password or ""})
 
     return {
         "protocol": "http",
@@ -1371,10 +1699,7 @@ def parse_http(http_link):
             "servers": [{
                 "address": host,
                 "port": int(port),
-                "users": [{
-                    "user": username or "",
-                    "pass": password or "",
-                }] if username else []
+                "users": users
             }]
         },
         "tag": unquote(parsed.fragment) if parsed.fragment else "http_node"
@@ -1402,36 +1727,323 @@ def parse_mtproto(mtproto_link):
     }
 
 
-def parse_node(link):
-    """自动识别并解析节点链接"""
-    try:
-        if link.startswith('vmess://'):
-            return parse_vmess(link)
-        elif link.startswith('trojan://'):
-            return parse_trojan(link)
-        elif link.startswith('vless://'):
-            return parse_vless(link)
-        elif link.startswith('hysteria://'):
-            return parse_hysteria(link)
-        elif link.startswith('hysteria2://'):
-            return parse_hysteria2(link)
-        elif link.startswith('ss://'):
-            return parse_shadowsocks(link)
-        elif link.startswith('ssr://'):
-            return parse_shadowsocksr(link)
-        elif link.startswith('socks'):
-            return parse_socks(link)
-        elif link.startswith(('http://', 'https://')):
-            return parse_http(link)
-        elif link.startswith('tg://'):
-            return parse_mtproto(link)
 
-        else:
-            print(f"不支持的链接类型: {link[:20]}...")
-            return None
-    except Exception as e:
-        print(f"解析链接失败 [{link[:20]}...]: {str(e)}")
+# 支持的分享链接协议。AnyTLS 单独识别，但当前由 Xray 核心运行时不支持。
+NODE_SCHEMES = {
+    "vmess", "trojan", "vless", "hysteria", "hysteria2", "tuic",
+    "ss", "ssr", "socks", "socks4", "socks5", "socks5h",
+    "http", "https", "tg", "anytls"
+}
+
+# Xray 负责传统 V2Ray 协议；sing-box 负责 Xray 不支持但 sing-box 支持的协议。
+SING_BOX_SCHEMES = {"anytls", "hysteria", "hysteria2", "tuic"}
+SING_BOX_EXE_NAME = "sing-box.exe"
+SING_BOX_EXE_PATH = os.path.join(object_name, SING_BOX_EXE_NAME)
+
+
+def get_node_core(link):
+    """根据分享链接协议选择核心。返回 xray / sing-box / unsupported。"""
+    scheme = get_node_scheme(link)
+    if scheme in SING_BOX_SCHEMES:
+        return "sing-box"
+    if scheme in {"ssr", "tg"}:
+        # 当前 sing-box 稳定版的官方出站类型列表不包含 SSR / MTProto。
+        return "unsupported"
+    if scheme in NODE_SCHEMES:
+        return "xray"
+    return "unsupported"
+
+
+def _query_bool(query, *keys, default=False):
+    for key in keys:
+        if key in query and query[key]:
+            return str(query[key][0]).strip().lower() in ("1", "true", "yes", "on")
+    return default
+
+
+def _tls_config(query, default_server_name=""):
+    tls = {"enabled": True}
+    server_name = query.get("sni", query.get("peer", [default_server_name]))[0]
+    if server_name:
+        tls["server_name"] = server_name
+    if _query_bool(query, "insecure", "allowInsecure", "allow_insecure"):
+        tls["insecure"] = True
+    alpn = query.get("alpn", [""])[0]
+    if alpn:
+        tls["alpn"] = [x.strip() for x in alpn.split(",") if x.strip()]
+    return tls
+
+
+def generate_singbox_config(link, local_port):
+    """将 AnyTLS/Hysteria/Hysteria2/TUIC 分享链接转换为 sing-box 1.14.x 配置。"""
+    link = normalize_node_link(link)
+    parsed = urlparse(link)
+    scheme = parsed.scheme.lower()
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    host = parsed.hostname
+    port = parsed.port
+    if not host or not port:
+        raise ValueError(f"节点缺少服务器地址或端口: {link[:100]}")
+
+    outbound = {"tag": "proxy"}
+    if scheme == "anytls":
+        # anytls://password@server:port?security=tls&sni=...
+        outbound.update({
+            "type": "anytls",
+            "server": host,
+            "server_port": port,
+            "password": unquote(parsed.username or ""),
+            "tls": _tls_config(query, host),
+        })
+    elif scheme == "hysteria2":
+        outbound.update({
+            "type": "hysteria2",
+            "server": host,
+            "server_port": port,
+            "password": unquote(parsed.username or ""),
+            "tls": _tls_config(query, host),
+        })
+        obfs_type = query.get("obfs", [""])[0]
+        obfs_password = query.get("obfs-password", query.get("obfs_password", [""]))[0]
+        if obfs_type and obfs_password:
+            outbound["obfs"] = {"type": obfs_type, "password": obfs_password}
+        up = query.get("upmbps", query.get("up_mbps", [""]))[0]
+        down = query.get("downmbps", query.get("down_mbps", [""]))[0]
+        if up.isdigit():
+            outbound["up_mbps"] = int(up)
+        if down.isdigit():
+            outbound["down_mbps"] = int(down)
+    elif scheme == "hysteria":
+        # 常见 hysteria://auth@host:port?auth=...&obfs=...&sni=...
+        auth = query.get("auth", [unquote(parsed.username or "")])[0]
+        outbound.update({
+            "type": "hysteria",
+            "server": host,
+            "server_port": port,
+            "auth_str": auth,
+            "tls": _tls_config(query, host),
+        })
+        obfs = query.get("obfs", [""])[0]
+        if obfs:
+            outbound["obfs"] = obfs
+        up = query.get("upmbps", query.get("up_mbps", ["100"]))[0]
+        down = query.get("downmbps", query.get("down_mbps", ["100"]))[0]
+        outbound["up_mbps"] = int(up) if str(up).isdigit() else 100
+        outbound["down_mbps"] = int(down) if str(down).isdigit() else 100
+    elif scheme == "tuic":
+        # tuic://uuid:password@host:port?congestion_control=bbr&udp_relay_mode=native&sni=...
+        outbound.update({
+            "type": "tuic",
+            "server": host,
+            "server_port": port,
+            "uuid": unquote(parsed.username or ""),
+            "password": unquote(parsed.password or ""),
+            "congestion_control": query.get("congestion_control", ["bbr"])[0],
+            "udp_relay_mode": query.get("udp_relay_mode", ["native"])[0],
+            "tls": _tls_config(query, host),
+        })
+    else:
+        raise ValueError(f"sing-box 暂不处理该协议: {scheme}")
+
+    tag = unquote(parsed.fragment or f"{scheme}_node")
+    outbound["tag"] = "proxy"
+    return {
+        "log": {"level": "warn"},
+        "inbounds": [{
+            "type": "socks",
+            "tag": "socks-in",
+            "listen": "127.0.0.1",
+            "listen_port": int(local_port)
+        }],
+        "outbounds": [
+            outbound,
+            {"type": "direct", "tag": "direct"}
+        ],
+        "route": {"final": "proxy"}
+    }
+
+
+def generate_node_config(link, parsed_node, local_port):
+    """统一配置入口，按协议选择 Xray 或 sing-box。"""
+    core = get_node_core(link)
+    if core == "sing-box":
+        return generate_singbox_config(link, local_port), core
+    if core == "xray":
+        return generate_config([parsed_node], local_port), core
+    raise ValueError(f"当前没有可用核心支持该协议: {get_node_scheme(link)}")
+
+
+def set_config_inbound_port(config, port):
+    """同时兼容 Xray 的 inbound.port 与 sing-box 的 inbound.listen_port。"""
+    inbound = config["inbounds"][0]
+    if "listen_port" in inbound:
+        inbound["listen_port"] = int(port)
+    else:
+        inbound["port"] = int(port)
+
+
+def detect_config_core(config_path):
+    """通过配置结构判断配置属于 sing-box 还是 Xray。"""
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        inbound = (cfg.get("inbounds") or [{}])[0]
+        return "sing-box" if "type" in inbound and "listen_port" in inbound else "xray"
+    except Exception:
+        return "xray"
+
+
+def kill_all_proxy_cores():
+    """停止本程序可能启动的两个核心，避免旧核心占用测速端口。"""
+    for name in (f"{type_}.exe", SING_BOX_EXE_NAME):
+        try:
+            kill_exe(name)
+        except Exception:
+            traceback.print_exc()
+
+
+
+def normalize_node_link(link):
+    """清理订阅中的链接文本，不改动节点参数本身。"""
+    if not isinstance(link, str):
+        return ""
+    link = html_unescape(link).strip().lstrip("\ufeff")
+    # 兼容日志/订阅中出现的转义形式 https\\://
+    link = re.sub(r"\\+://", "://", link)
+    # 有些订阅将节点写成 markdown 链接，先不尝试猜测/改写其参数
+    return link.strip().strip('"').strip("'")
+
+
+def get_node_scheme(link):
+    """返回明确的协议名；普通网址说明、公告等返回空字符串。"""
+    link = normalize_node_link(link)
+    if not link or "://" not in link:
+        return ""
+    scheme = link.split("://", 1)[0].lower()
+    return scheme if scheme in NODE_SCHEMES else ""
+
+
+def is_candidate_node_link(link):
+    """订阅抓取阶段只保留明确的节点协议，避免把 Website= 等文本送去解析。"""
+    scheme = get_node_scheme(link)
+    if not scheme:
+        return False
+    if scheme in ("http", "https"):
+        try:
+            parsed = urlsplit(normalize_node_link(link))
+            return bool(parsed.hostname and parsed.port is not None)
+        except ValueError:
+            return False
+    return True
+
+
+def extract_subscription_links(raw_text):
+    """
+    兼容明文节点订阅和 Base64 节点订阅。
+    不再对普通 HTML/说明文字盲目 Base64 解码。
+    """
+    if not isinstance(raw_text, str):
+        return []
+
+    raw_text = html_unescape(raw_text).strip().lstrip("\ufeff")
+    candidates = []
+
+    def collect(text):
+        found = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            # 订阅文件有时一行包含多个空格分隔节点
+            for token in re.split(r"\s+", line):
+                token = normalize_node_link(token)
+                if is_candidate_node_link(token):
+                    found.append(token)
+        return found
+
+    candidates = collect(raw_text)
+    if candidates:
+        return list(dict.fromkeys(candidates))
+
+    # 明文没有节点时，再尝试 Base64（标准及 URL-safe）
+    compact = re.sub(r"\s+", "", raw_text)
+    if not compact:
+        return []
+
+    try:
+        padded = compact + "=" * (-len(compact) % 4)
+        decoded_bytes = base64.urlsafe_b64decode(padded.encode("ascii"))
+        decoded_text = decoded_bytes.decode("utf-8-sig", errors="strict")
+    except Exception:
+        return []
+
+    candidates = collect(decoded_text)
+    return list(dict.fromkeys(candidates))
+
+
+def parse_node(link):
+    """自动识别节点；sing-box 协议返回核心标记，Xray 协议返回原有出站字典。"""
+    link = normalize_node_link(link)
+    if not link:
         return None
+
+    lower_link = link.lower()
+    if lower_link.startswith(("#", ";", "//", "website=", "website:",
+                              "update=", "更新时间", "订阅地址", "剩余流量",
+                              "过期时间", "套餐到期", "流量信息")):
+        print(f"跳过订阅说明/元信息: {link[:80]}")
+        return None
+
+    scheme = get_node_scheme(link)
+    if not scheme:
+        print(f"跳过非节点订阅内容: {link[:80]}")
+        return None
+
+    core = get_node_core(link)
+    if core == "sing-box":
+        # 保留原始分享链接，稍后按 sing-box 原生 JSON 格式生成配置。
+        return {"_core": "sing-box", "_link": link, "protocol": scheme,
+                "tag": unquote(urlparse(link).fragment or f"{scheme}_node")}
+    if core == "unsupported":
+        print(f"当前双核心组合暂不支持 {scheme} 协议，跳过: {link[:100]}")
+        return None
+
+    parsers = {
+        "vmess": parse_vmess,
+        "trojan": parse_trojan,
+        "vless": parse_vless,
+        "ss": parse_shadowsocks,
+        "socks": parse_socks,
+        "socks4": parse_socks,
+        "socks5": parse_socks,
+        "socks5h": parse_socks,
+        "http": parse_http,
+        "https": parse_http,
+    }
+    if scheme in ("http", "https"):
+        try:
+            parsed_url = urlsplit(link)
+            if not parsed_url.hostname or parsed_url.port is None:
+                print(f"跳过普通网页（不是 HTTP 代理节点）: {link[:80]}")
+                return None
+        except ValueError as exc:
+            print(f"HTTP代理链接格式错误: {exc}")
+            return None
+
+    parser = parsers.get(scheme)
+    if parser is None:
+        print(f"暂不支持的节点协议: {scheme}")
+        return None
+    try:
+        node = parser(link)
+        if not node:
+            print(f"{scheme} 节点内容不完整或解析失败: {link}")
+        return node
+    except Exception as exc:
+        print(f"解析链接失败 [{link}]: {type(exc).__name__}: {exc}")
+        return None
+
 
 def generate_config(nodes, local_port,template=None):
     """生成完整 config.json"""
@@ -1466,15 +2078,9 @@ def generate_config(nodes, local_port,template=None):
                     "domain:shadowsocks.org": "electronicsrealm.com"
                 },
                 "servers": [
-                    "1.1.1.1",
-                    {
-                        "address": "114.114.114.114",
-                        "port": 53,
-                        "domains": ["geosite:cn"]
-                    },
-                    "8.8.8.8",
                     "localhost"
                 ]
+
             },
             "policy": {
                 "levels": {
@@ -1508,12 +2114,12 @@ def generate_config(nodes, local_port,template=None):
 
     # 添加路由规则
     template["routing"] = {
-        "domainStrategy": "IPOnDemand",
+        "domainStrategy": "AsIs",
         "rules": [
             {
                 "type": "field",
                 "ip": ["geoip:private"],
-                "outboundTag": "blocked"
+                "outboundTag": "direct"
             },
             {
                 "type": "field",
@@ -1656,13 +2262,9 @@ def get_config_informationurl2(local_port):
                                             break
                                         n2 += 1
                         # print('soup672',soup)
-                        b = bytes(str(soup), encoding='utf-8')
-                        b64 = base64.b64decode(b).decode().split('\n')
-
-                        for i, sss in enumerate(b64):
-                            if 'ss:' not in str(sss)[0:3] and str(sss) != '' and 'ssr://' not in str(sss):
-                                # print(i,sss)
-                                node_links.append(sss)
+                        # 同时支持明文订阅与 Base64 订阅；不再错误排除 ss://、ssr://
+                        extracted_links = extract_subscription_links(str(soup))
+                        node_links.extend(extracted_links)
                     else:
                         cmd_on_color.printRed(f"暂时没有节点，跳过该链接{url2}，错误信息：{soup[:18]}")
                     break
@@ -1717,3 +2319,4 @@ if __name__ == "__main__":
     main_proxy_log()
     # get_config_informationurl1(10822)
     # get_config_informationurl2(10822)
+
