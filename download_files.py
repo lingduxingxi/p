@@ -313,7 +313,7 @@ def download_file_state(url=None, file_path=None, proxy_port=None, headers=None,
     return state, average_speed
 
 
-def test_speed_old(url='http://ipv4.download.thinkbroadband.com/20MB.zip', file_path="test_speed.gif", proxy_port=None, headers=None, interval=0.2):
+def test_speed_old(url='http://ipv4.download.thinkbroadband.com/20MB.zip', file_path="test_speed.zip", proxy_port=None, headers=None, interval=0.2):
     def MB(byte):
         return byte / 1024 / 1024
 
@@ -440,7 +440,7 @@ def test_speed_old(url='http://ipv4.download.thinkbroadband.com/20MB.zip', file_
     return average_speed_str
 
 
-def test_speed(url='http://ipv4.download.thinkbroadband.com/20MB.zip', file_path="test_speed.gif", proxy_port=None, headers=None, interval=0.2):
+def test_speed(url='http://ipv4.download.thinkbroadband.com/20MB.zip', file_path="test_speed.zip", proxy_port=None, headers=None, interval=0.2):
     def MB(byte):
         return byte / 1024 / 1024
 
@@ -541,7 +541,7 @@ if __name__ == "__main__":
     # traceback.print_exc()
     # print(e)
     # print("超时29秒，准备重试!!!")
-    print(test_speed('http://ipv4.download.thinkbroadband.com/20MB.zip', os.getcwd() + r"\test_speed.zip", 10822))
+    print(test_speed('http://ipv4.download.thinkbroadband.com/20MB.zip', os.getcwd() + r"\test_speed.zip", 8891))
     # print(test_speed('https://www.thinkbroadband.com/download?file=18MB', os.getcwd() + r"\test_speed.gif", 10801))
     # print(test_speed('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", 88))
     # download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", '88')
