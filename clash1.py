@@ -42,6 +42,13 @@ url2_source_list = [
 
                     ]#备用 可筛选可用的ss   原生网站
 
+url1_list = [
+                    "https://raw.githubusercontent.com/shifeiquan520/shifeiquan3/refs/heads/main/output/clash.yaml", #
+
+                    ]#备用 可筛选可用的ss   原生网站
+
+
+
 
 '''
 ###订阅
@@ -375,113 +382,135 @@ def get_ss(ss_url=f'https://v2rayse.com/fs/public/{today}/kdfbypk.txt'):
         return base64_backup
 
 
-def get_config_informationurl1(local_port):
-    # http = urllib3.PoolManager()
-    webpage = ''
-    html = ''
-    n = 0
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.26"}
-    while True:
-        print('使用连接1进行更新！')
-        try:
-            if n > 2:
-                print('使用AI_all_auto代理88')
-                proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                webpage = requests.get(url1, headers=headers, timeout=8, proxies=proxies)
-            else:
-                print('不使用代理')
-                webpage = requests.get(url1, headers=headers, timeout=8)
-            link_url1_successful = '连接1成功！'
-            print(link_url1_successful)
-            break
 
-        except Exception as err:
-            print(err)
-            print('连接1错误，2秒后重试！')
-            time.sleep(2)
-        # print(n)
-        if n >= 8:
-            # os.system('python SS1_ip2.py')
-            break
-        n += 1
-    if webpage != '':
-        data = webpage.content
-        # data = html.data.decode()
-        code = BeautifulSoup(data, 'html.parser')
-        # print(code)
-        yaml_vpn_url = ''
-        code_vpn = ''
-        ss = ''
-        for i,url_vpn in enumerate(code.find_all('h2')):
-            # print('url_vpn22',url_vpn)
-            if i == 0 :
-                href_url = url_vpn.find('a').get('href')
-                # print(href_url)
-                # time.sleep(99)
-                n = 0
-                while True:
-                    print('使用连接1进行更新！')
-                    try:
-                        if n > 2:
-                            print('使用AI_all_auto代理88')
-                            proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
-                            webpage = requests.get(href_url, headers=headers, timeout=8, proxies=proxies)
-                        else:
-                            print('不使用代理')
-                            webpage = requests.get(href_url, headers=headers, timeout=8)
-                        href_url = '连接href_url成功！'
-                        print(href_url)
-                        break
+def get_clash_link():
+    url_yamls = []
+    for i,url in enumerate(url1_list):
+        url_yaml = f"{type_}{i+1}.yaml"
+        download_files.download_file(url, url_yaml)
+        with open(url_yaml, "r", encoding="utf-8") as f:
+            content = f.read()
 
-                    except Exception as err:
-                        print(err)
-                        print('连接href_url错误，2秒后重试！')
-                        time.sleep(2)
-                    # print(n)
-                    if n >= 8:
-                        # os.system('python SS1_ip2.py')
-                        break
-                    n += 1
-                data = webpage.content
-                code_vpn = BeautifulSoup(data, 'html.parser')
-        for div in code_vpn.find_all('div'):
-            ss_url = div.get_text(strip=True)
+        replacements = [
+            ("10801", "8891"),
+            ("log-level: silent", "log-level: info"),
+            ("global-client-fingerprint: chrome", ""),
+            ("mixed-port: 7890", "mixed-port: 8891"),
+            ("mixed-port:7890", "mixed-port: 8891"),
+        ]
 
-            if ss_url.endswith('.txt') and ss_url.startswith('http'):
-                # print(ss_url)
-                print('ss_url710',ss_url)#https://v2rayse.com/fs/public/20260208/kdfbypk.txt
-                ss = get_ss(ss_url)
-            # print()
-            # if 'yaml' in yaml_vpn.text :
-            #     yaml_vpn_url = yaml_vpn.text.split('即可更新订阅链接')[-1]
-            #     print(yaml_vpn_url)
-        # print('ss442',ss)
-        b = bytes(ss, encoding='utf-8')
-        b64 = base64.b64decode(b).decode().split('\n')
-        # print(b64)
-        node_links = []
-        for i,sss in enumerate(b64 ):
-            # print(i)
-            # print(sss[0:3])
-            if 'ss:' not in sss[0:3] :
-                # print('sss221',sss)
-                # print(sss)
-                node_links.append(sss)
-        print(f'get_config_informationurl1共有节点数目为：{len(node_links)}')
-        return node_links
+        very_good_config = content
+
+        for old, new in replacements:
+            very_good_config = very_good_config.replace(old, new)
+        with open(url_yaml, "w", encoding="utf-8") as f:
+            f.write(very_good_config)
+        url_yamls.append(url_yaml)
+    return url_yamls
+
+def kill_all_proxy_cores():
+    """停止本程序可能启动的两个核心，避免旧核心占用测速端口。"""
+    # for name in (f"{type_}.exe"):
+    try:
+        kill_exe(f"{type_}.exe")
+    except Exception:
+        traceback.print_exc()
 
 
 
-def get_config_informationurl(url):
-
-    download_files.download_file(url, "clash1.yaml")
-    with open("clash1.yaml", "r", encoding="utf-8") as f:
-        content = f.read()
-
-    very_good_config = content.replace("10801", "8891").replace("log-level: silent", "log-level: info").replace("global-client-fingerprint: chrome", "")
+def get_config_informationurl(local_port):
 
 
-    return very_good_config
+    node_link_list = get_clash_link()
+    # 解析所有节点
+    backup_average_speed_list = []
+    backup_valid_node_list = []
+    valid_node_list = []
+    average_speed_list = []
+    link_err_list = []
+    skipped_node_list = []
+
+    # while True:
+    for i,link in enumerate(node_link_list):
+
+        # if i==3 :break #测试
+        cmd_on_color.printMag(f"++++++++++++++++++++++++++处理节点进度{i+1}/{len(node_link_list)}++++++++++++++++++++++++++")
+        # cmd_on_color.printCya(f"开始处理的第{i+1}个节点b64全部信息为：{link}")
+
+        print(fr"开始对{link}进行测速")  ## clash11.yaml
+        kill_all_proxy_cores()
+
+        exe_name = f"{type_}.exe"
+        exe_name_path = os.path.join(object_name, exe_name)
+        cmd = [exe_name_path, "-d", object_name,"-f", os.path.join(object_name, f"{link}")]
+        #clash1.exe -d "D:\客户端集合代理" -f "D:\客户端集合代理\clash1.yaml"
+        print("启动核心命令:", subprocess.list2cmdline(cmd))
+        if not os.path.isfile(exe_name_path):
+            message = f"缺少核心程序 {exe_name}，该yaml暂时跳过。请将核心放到程序目录：{exe_name_path}"
+            cmd_on_color.printRed(message)
+            link_err_list.append(link)
+            continue
+        process = subprocess.Popen(
+            cmd,
+            cwd=object_name,
+            shell=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        )
+
+        # state, average_speed = download_files.download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", local_port)
+        average_speed = download_files.test_speed(proxy_port=local_port)
+        kill_all_proxy_cores()
+        # 第二层检测
+        if average_speed == '-1.000':
+            cmd_on_color.printRed(f"{link[:18]}该yaml不可以上网，准备换下一个yaml！252")
+        elif float(average_speed) < 2.000:
+            cmd_on_color.printBlu(f'{link[:18]}该yaml速度小于【2M】，不过【可以上网】，其平均速度为{average_speed}MB/s')
+            backup_valid_node_list.append(link)
+            backup_average_speed_list.append(average_speed)
+        else:
+            cmd_on_color.printGre(f'{link[:18]}该yaml可以上网，其平均速度为{average_speed}MB/s')
+            valid_node_list.append(link)
+            average_speed_list.append(average_speed)
+
+    kill_all_proxy_cores()
+    cmd_on_color.printRed(
+        f"真正解析失败的yaml数目：{len(link_err_list)}个，具体如下：\n{link_err_list}"
+    )
+    cmd_on_color.printBlu(
+        f"跳过的非yaml/暂不支持yaml数目：{len(skipped_node_list)}个"
+    )
+    cmd_on_color.printCya(f"总共需要处理的yaml数目：{len(node_link_list)}")
+    cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效yaml的速度列表：{average_speed_list}')
+    if len(average_speed_list) == 0:#如果yaml为0个  就切换备用yaml
+        average_speed_list = backup_average_speed_list
+        valid_node_list = backup_valid_node_list  #[yaml]
+        cmd_on_color.printMag(f'改用【小于2M】的备用yaml数目！{len(average_speed_list)}个【备用】有效yaml的速度列表：{average_speed_list}')
+    # 步骤1: 生成带原始序号的元组列表
+    indexed_data = list(enumerate(average_speed_list))  # [(0, '1.423'), (1, '1.213'), ...]
+
+    # 步骤2: 按值排序（升序）
+    valid_node_list_sorted_data = sorted(indexed_data, key=lambda x: float(x[1]), reverse=True)
+    with open(fr'{object_name_output_log}/{type_}_valid_node_list_sorted_data.txt', 'w+', encoding='utf-8') as f:
+        f.write(f'{valid_node_list_sorted_data}')
+    with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'w+', encoding='utf-8') as f:
+        f.write(f'{valid_node_list}') #[clash11.yaml]
+
+    # 步骤3: 输出排序后的序号和对应值
+    # print("排序后序号\t原始序号\t值")
+    for new_idx, (old_idx, value) in enumerate(valid_node_list_sorted_data, start=1):
+        if new_idx == 1:
+            # print(f"{new_idx}\t\t{max_index}\t\t{max_value}")
+            # max_index = average_speed_list.index(max_value)
+            max_value = value
+            max_index = old_idx
+            very_good_node = valid_node_list[max_index]  ##[clash11.yaml]
+            cmd_on_color.printBlu(f"速度最快的yaml: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
+            return very_good_node
+
+
+    # return very_good_config
 
 
 def download_file_state(file_path, url, proxy_port):
@@ -1432,25 +1461,6 @@ def url22_get_clash1_list(headers,url22,url22_source):
             url_clash1_list.append(not_ss)
     return url_clash1_list
 
-def get_config_informationurl2(local_port):
-    reg = ''
-    soup = ''
-    n = 1
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        # "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-        "Connection": "keep-alive"  # 保持长连接，避免频繁断开
-    }
-    # url2_list = ["https://raw.githubusercontent.com/ripaojiedian/freenode/main/sub", "https://github.com/abshare3/abshare3.github.io", "https://github.com/mksshare/mksshare.github.io"]  # 备用 可筛选可用的ss   B64 解码
-    congfig_list = []
-    node_links = []
-    for i, url2 in enumerate(url2_list):
-        get_clash1(url2)
-
-    print(f'get_config_informationurl2共有节点数目为：{len(node_links)}')
-    return node_links
 
 def main_proxy_log():
     # 确保目录存在
@@ -1488,5 +1498,4 @@ if __name__ == "__main__":
     # main_proxy()
 
     # main_proxy_log()
-    get_config_informationurl1(8891)
-    # get_config_informationurl2(8891)
+    get_config_informationurl(8891)
