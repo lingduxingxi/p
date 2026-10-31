@@ -1324,34 +1324,65 @@ def parse_mtproto(mtproto_link):
 
 
 def parse_node(link):
-    """自动识别并解析节点链接"""
-    try:
-        if link.startswith('vmess://'):
-            return parse_vmess(link)
-        elif link.startswith('trojan://'):
-            return parse_trojan(link)
-        elif link.startswith('vless://'):
-            return parse_vless(link)
-        elif link.startswith('hysteria://'):
-            return parse_hysteria(link)
-        elif link.startswith('hysteria2://'):
-            return parse_hysteria2(link)
-        elif link.startswith('ss://'):
-            return parse_shadowsocks(link)
-        elif link.startswith('ssr://'):
-            return parse_shadowsocksr(link)
-        elif link.startswith('socks'):
-            return parse_socks(link)
-        elif link.startswith(('http://', 'https://')):
-            return parse_http(link)
-        elif link.startswith('tg://'):
-            return parse_mtproto(link)
+    """自动识别节点；sing-box 协议返回核心标记，Xray 协议返回原有出站字典。"""
+    link = normalize_node_link(link)
+    if not link:
+        return None
 
-        else:
-            print(f"不支持的链接类型: {link[:20]}...")
+    lower_link = link.lower()
+    if lower_link.startswith(("#", ";", "//", "website=", "website:",
+                              "update=", "更新时间", "订阅地址", "剩余流量",
+                              "过期时间", "套餐到期", "流量信息")):
+        print(f"跳过订阅说明/元信息: {link[:80]}")
+        return None
+
+    scheme = get_node_scheme(link)
+    if not scheme:
+        print(f"跳过非节点订阅内容: {link[:80]}")
+        return None
+
+    core = get_node_core(link)
+    if core == "sing-box":
+        # 保留原始分享链接，稍后按 sing-box 原生 JSON 格式生成配置。
+        return {"_core": "sing-box", "_link": link, "protocol": scheme,
+                "tag": unquote(urlparse(link).fragment or f"{scheme}_node")}
+    if core == "unsupported":
+        print(f"当前双核心组合暂不支持 {scheme} 协议，跳过: {link[:100]}")
+        return None
+
+    parsers = {
+        "vmess": parse_vmess,
+        "trojan": parse_trojan,
+        "vless": parse_vless,
+        "ss": parse_shadowsocks,
+        "socks": parse_socks,
+        "socks4": parse_socks,
+        "socks5": parse_socks,
+        "socks5h": parse_socks,
+        "http": parse_http,
+        "https": parse_http,
+    }
+    if scheme in ("http", "https"):
+        try:
+            parsed_url = urlsplit(link)
+            if not parsed_url.hostname or parsed_url.port is None:
+                print(f"跳过普通网页（不是 HTTP 代理节点）: {link[:80]}")
+                return None
+        except ValueError as exc:
+            print(f"HTTP代理链接格式错误: {exc}")
             return None
-    except Exception as e:
-        print(f"解析链接失败 [{link[:20]}...]: {str(e)}")
+
+    parser = parsers.get(scheme)
+    if parser is None:
+        print(f"暂不支持的节点协议: {scheme}")
+        return None
+    try:
+        node = parser(link)
+        if not node:
+            print(f"{scheme} 节点内容不完整或解析失败: {link}")
+        return node
+    except Exception as exc:
+        print(f"解析链接失败 [{link}]: {type(exc).__name__}: {exc}")
         return None
 
 
