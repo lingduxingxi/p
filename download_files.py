@@ -456,13 +456,15 @@ def test_speed(url='http://ipv4.download.thinkbroadband.com/20MB.zip', file_path
 
             # 代理判断
             if proxy_port and str(proxy_port).isdigit():
-                print('走代理下载中……端口：' + str(proxy_port))
+                print('459走代理下载中……端口：' + str(proxy_port))
                 proxies = {"http": "socks5h://127.0.0.1:" + str(proxy_port), "https": "socks5h://127.0.0.1:" + str(proxy_port)}
+                # resp = requests.get(url, proxies=proxies, timeout=(10, 15), verify=False,
+                #                     headers={'User-Agent': 'Mozilla/5.0'})
                 resp = requests.get(url, stream=True, timeout=8, headers=headers, proxies=proxies, verify=False)
             else:
                 print('不走代理，直接下载中……2')
                 resp = requests.get(url, stream=True, timeout=2, headers=headers)
-
+            print('467resp_state_code:',resp.status_code)
             # 获取文件大小
             try:
                 file_size = int(resp.headers.get('content-length', 0))
@@ -542,6 +544,7 @@ if __name__ == "__main__":
     # print(e)
     # print("超时29秒，准备重试!!!")
     print(test_speed('http://ipv4.download.thinkbroadband.com/20MB.zip', os.getcwd() + r"\test_speed.zip", 8891))
+    # print(test_speed('https://www.youtube.com/', os.getcwd() + r"\test_speed.zip", 8891))
     # print(test_speed('https://www.thinkbroadband.com/download?file=18MB', os.getcwd() + r"\test_speed.gif", 10801))
     # print(test_speed('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", 88))
     # download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", '88')
