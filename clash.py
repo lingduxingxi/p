@@ -4,6 +4,8 @@ import ast
 import re
 import threading
 import traceback
+from shutil import copy
+
 import psutil
 import win32con
 from DrissionPage._configs.chromium_options import ChromiumOptions
@@ -27,6 +29,7 @@ import download_files
 from notification_simulator import show_notification
 from run_port_exe import run_exe
 from upload_node import upload
+import yaml
 
 today = time.strftime('%Y%m%d', time.localtime())
 # today = '20250528'
@@ -44,10 +47,14 @@ url2_source_list = [
 
 url1_list = [
                     "https://raw.githubusercontent.com/shifeiquan520/shifeiquan3/refs/heads/main/output/clash.yaml", #
-                    "https://raw.githubusercontent.com/ts-sf/fly/main/clash", #
-                    "https://raw.githubusercontent.com/hamzawih0/zorVPN/refs/heads/main/ZorVPN.yaml", #
+                    "https://raw.githubusercontent.com/PuddinCat/BestClash/refs/heads/main/proxies.yaml", #
+                    "https://github.com/VPN-Subcription-Links/ClashX-V2Ray-TopFreeProxy/raw/refs/heads/main/combine/clash.config.yaml", #
                     "https://raw.githubusercontent.com/snakem982/proxypool/27cc980cfc0569b07b143ea169cc0e78f5a9d40b/source/clash-meta-2.yaml", #
                     "https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.yml", #
+                    "https://github.com/sunmiao4458/free-proxy-airport/raw/refs/heads/main/output/clash.yaml", #
+                    "https://github.com/ermaozi01/free_clash_vpn/raw/78b2482c49101d57efc01566258c52c032fd0cc3/subscribe/clash.yml", #
+                    "https://github.com/SnapdragonLee/SystemProxy/raw/489d52526250ec86dd7c86502ee3904f0e245580/dist/clash_config_extra.yaml", #
+                    "https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/clash.yml", #
 
                     ]#备用 可筛选可用的ss   原生网站
 
@@ -83,8 +90,6 @@ https://github.com/shabane/kamaji/blob/master/hub/vless.txt
 logging.captureWarnings(True)  # 强制取消证书验证警告
 
 
-
-
 type_ = os.path.basename(__file__).replace('.py', '')
 # open_Shadowsocks1 = os.getcwd() + fr'\{type_}\Shadowsocks1.exe'
 # print('open_Shadowsocks128',open_Shadowsocks1)
@@ -114,6 +119,9 @@ except Exception as e:
 with open(fr'{folder_path}\{type_}=》{pid}.txt', 'w+', encoding='utf-8') as f:
     f.write(f'{type_}=>{pid}')
     f.close()
+
+file_name_8899 = f'{type_}_configs_port8899.yaml'
+file_name_88 = f'{type_}_configs_port88.yaml'
 
 
 
@@ -386,7 +394,6 @@ def get_ss(ss_url=f'https://v2rayse.com/fs/public/{today}/kdfbypk.txt'):
         return base64_backup
 
 
-import yaml
 
 def find_proxy_group(url_yaml):
     """
@@ -519,37 +526,60 @@ def find_proxy_group(url_yaml):
                 return name
 
     raise ValueError("没有找到可用的代理组！")
-
 def get_clash_link():
     url_yamls = []
-    for i,url in enumerate(url1_list):
-        url_yaml = f"{type_}{i+1}.yaml"
+    for i, url in enumerate(url1_list):
+        if i == 3:
+            url_yaml = f"{type_}1{len(url1_list)+1}.yaml"
+        else:
+            url_yaml = f"{type_}1{i+1}.yaml"
         download_files.download_file(url, url_yaml)
         with open(url_yaml, "r", encoding="utf-8") as f:
             content = f.read()
-        proxy_group_name = find_proxy_group(url_yaml)
+        # proxy_group_name = find_proxy_group(url_yaml)
+        # print()
         replacements = [
-            ("10801", "8899"),
-            ("10802", "8899"),
-            ("7890", "8899"),
-            ("7891", "8899"),
-            ("7892", "8899"),
+            # ("10801", "8899"),
+            # ("10802", "8899"),
+            # ("7890", "8899"),
+            # ("7891", "8899"),
+            # ("7892", "8899"),
             ("log-level: silent", "log-level: info"),
             ("global-client-fingerprint: chrome", ""),
-            ("mixed-port: 7890", "mixed-port: 8899"),
-            ("mixed-port:7890", "mixed-port: 8899"),
-            ("rules:", f"rules:\n- DOMAIN,ipv4.download.thinkbroadband.com,🚀 {proxy_group_name}\n"),
-            ("rules :", f"rules :\n- DOMAIN,ipv4.download.thinkbroadband.com,🚀 {proxy_group_name}\n"),
+
+            # ("rules:", f"rules:\n- DOMAIN,ipv4.download.thinkbroadband.com,🚀 {proxy_group_name}\n"),
+            # ("rules :", f"rules :\n- DOMAIN,ipv4.download.thinkbroadband.com,🚀 {proxy_group_name}\n"),
         ]
 
         very_good_config = content
 
         for old, new in replacements:
             very_good_config = very_good_config.replace(old, new)
+
+        # 解析 YAML，修复空 cipher
+        config_data = yaml.safe_load(very_good_config)
+        if config_data and 'proxies' in config_data:
+            for proxy in config_data['proxies']:
+                if proxy.get('type') == 'vmess' and proxy.get('cipher') == '':
+                    proxy['cipher'] = 'auto'
+        very_good_config = yaml.dump(config_data, allow_unicode=True, sort_keys=False)
+
+        # 处理 mixed-port
+        if 'mixed-port' in content:
+            # 有 mixed-port 时替换
+            very_good_config = very_good_config.replace("mixed-port: 7890", "mixed-port: 8899")
+            very_good_config = very_good_config.replace("mixed-port:7890", "mixed-port: 8899")
+        else:
+            # 无 mixed-port 时在最前面添加
+            very_good_config = "mixed-port: 8899\n" + very_good_config
+
         with open(url_yaml, "w", encoding="utf-8") as f:
             f.write(very_good_config)
+
         url_yamls.append(url_yaml)
     return url_yamls
+
+
 
 def kill_all_proxy_cores():
     """停止本程序可能启动的两个核心，避免旧核心占用测速端口。"""
@@ -576,7 +606,6 @@ def get_config_informationurl(local_port):
     # while True:
     for i,link in enumerate(node_link_list):
 
-        # if i==3 :break #测试
         cmd_on_color.printMag(f"++++++++++++++++++++++++++处理节点进度{i+1}/{len(node_link_list)}++++++++++++++++++++++++++")
         # cmd_on_color.printCya(f"开始处理的第{i+1}个节点b64全部信息为：{link}")
 
@@ -603,7 +632,13 @@ def get_config_informationurl(local_port):
         )
 
         # state, average_speed = download_files.download_file_state('https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif', os.getcwd() + r"\test_speed.gif", local_port)
-        average_speed = download_files.test_speed(proxy_port=local_port)
+        average_speed = '-1.000'
+        for i in range(8):
+            average_speed = download_files.test_speed(url='https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227ac630741f5d.gif',proxy_port=local_port)
+            if average_speed == '-1.000':
+                pass
+            else:
+                break
         kill_all_proxy_cores()
         # 第二层检测
         if average_speed == '-1.000':
@@ -624,7 +659,7 @@ def get_config_informationurl(local_port):
     cmd_on_color.printBlu(
         f"跳过的非yaml/暂不支持yaml数目：{len(skipped_node_list)}个"
     )
-    cmd_on_color.printCya(f"总共需要处理的yaml数目：{len(node_link_list)}")
+    cmd_on_color.printCya(f"总共需要处理的yaml数目：{len(node_link_list)}个,均可以上网的为{len(backup_valid_node_list)}个：{backup_valid_node_list}")
     cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效yaml的速度列表：{average_speed_list}')
     if len(average_speed_list) == 0:#如果yaml为0个  就切换备用yaml
         average_speed_list = backup_average_speed_list
@@ -650,6 +685,8 @@ def get_config_informationurl(local_port):
             max_index = old_idx
             very_good_node = valid_node_list[max_index]  ##[clash11.yaml]
             cmd_on_color.printBlu(f"速度最快的yaml: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
+            copy(very_good_node,'clash.yaml')
+            upload('clash.yaml')
             return very_good_node
 
 
@@ -805,8 +842,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
         if os.path.isfile(file_path):
             print(f"文件 '{file_path}' 存在")
             for i in range(node_int):
-                # cmd = f'"{exe_name_path}" -c "{object_name}\\{type_}_configs_port{local_port}.yaml" -vvv'
-                cmd = f'"{exe_name_path}" run -config "{object_name}\\{type_}_configs_port{local_port}.yaml"'  # clash1.exe run -config config.yaml
+                cmd = f'{exe_name_path} -d "{object_name}" -f "{file_path}"'  #clash1.exe -d "D:\客户端集合代理" -f "D:\客户端集合代理\clash1.yaml"
                 state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, object_name, exe_name_path,err_node_number,show_notification_state))
                 if '表示子进程已经终止' in state or '端口冲突' in state:
                     port88_err_num+=1
@@ -847,16 +883,9 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
                                     max_index = old_idx
                                     very_good_node = valid_node_list[max_index]
                                     cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
-                                    node = parse_node(very_good_node)
-                                    very_good_config = generate_config([node], local_port)
+                                    very_good_config = very_good_node
                                     if very_good_config and very_good_config != -1:
-                                        # 保存到文件
-                                        with open(object_name + fr'\{type_}_configs_port{local_port}.yaml', "w", encoding='utf-8') as f:
-                                            json.dump(very_good_config, f, indent=2, ensure_ascii=False)
-
-                                        with open(object_name + fr'\{type_}_configs_port88.yaml', "w", encoding='utf-8') as f:
-                                            very_good_config["inbounds"][0]["port"] = 88
-                                            json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                                        generate_2_config(very_good_config, file_name_8899, file_name_88)
                                         # time.sleep(2)
                                         # upload(fr'{type_}_configs_port{local_port}.yaml')
                                         # upload(fr'{type_}_configs_port88.yaml')
@@ -879,11 +908,21 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
     return state
 
 
+def generate_2_config(very_good_config,file_name_8899,file_name_88):
+    print(f"复制文件{very_good_config}到{file_name_8899}")
+    copy(very_good_config, file_name_8899)
+    with open(very_good_config, 'r+', encoding='utf-8') as f:
+        very_good_config_r = f.read().replace('8899', '88')
+    with open(file_name_88, 'w+', encoding='utf-8') as f:
+        f.write(very_good_config_r)
+    pass
+
 
 def main_proxy(local_port=8899):
-    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.yaml",
-                                 f"{type_}_configs_port{local_port}.yaml")
-    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.yaml", f"{type_}_configs_port88.yaml")
+
+    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{file_name_8899}",
+    #                              f"{file_name_8899}")
+    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{file_name_88}", f"{file_name_88}")
     time.sleep(2)
 
     # 启动监控进程
@@ -905,18 +944,10 @@ def main_proxy(local_port=8899):
     except:
         node_index = 0
     if node_index == 0:#无有效节点  需要更新
-        very_good_config = get_config_informationurl(local_port)
+        very_good_config = get_config_informationurl(local_port)  #clash17.yaml
         if very_good_config and very_good_config != -1:
-            # 保存到文件
-            with open(object_name + fr'\{type_}_configs_port{local_port}.yaml', "w", encoding='utf-8') as f:
-                json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+            generate_2_config(very_good_config,file_name_8899,file_name_88)
 
-            with open(object_name + fr'\{type_}_configs_port88.yaml', "w", encoding='utf-8') as f:
-                very_good_config["inbounds"][0]["port"] = 88
-                json.dump(very_good_config, f, indent=2, ensure_ascii=False)
-            # time.sleep(2)
-            # upload(fr'{type_}_configs_port{local_port}.yaml')
-            # upload(fr'{type_}_configs_port88.yaml')
         print(f'575开始杀死进程{exe_name}')
         kill_exe()  # exe_name, exe_name_path, object_name
         try:
@@ -944,17 +975,10 @@ def main_proxy(local_port=8899):
                 max_index = old_idx
                 very_good_node = valid_node_list[max_index]
                 cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
-                node = parse_node(very_good_node)
-                very_good_config = generate_config([node], local_port)
+                very_good_config = very_good_node
 
         if very_good_config and very_good_config != -1:
-            # 保存到文件
-            with open(object_name + fr'\{type_}_configs_port{local_port}.yaml', "w", encoding='utf-8') as f:
-                json.dump(very_good_config, f, indent=2, ensure_ascii=False)
-
-            with open(object_name + fr'\{type_}_configs_port88.yaml', "w", encoding='utf-8') as f:
-                very_good_config["inbounds"][0]["port"] = 88
-                json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+            generate_2_config(very_good_config, file_name_8899, file_name_88)
             # time.sleep(2)
             # # upload(fr'{type_}_configs_port{local_port}.yaml')
             # # upload(fr'{type_}_configs_port88.yaml')
@@ -997,17 +1021,10 @@ def main_proxy(local_port=8899):
                                 max_index = old_idx
                                 very_good_node = valid_node_list[max_index]
                                 cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
-                                node = parse_node(very_good_node)
-                                very_good_config = generate_config([node], local_port)
+                                very_good_config = very_good_node
                     # print('very_good_config596',very_good_config)
                     if very_good_config and very_good_config!=-1:
-                        # 保存到文件
-                        with open(object_name + fr'\{type_}_configs_port{local_port}.yaml', "w", encoding='utf-8') as f:
-                            json.dump(very_good_config, f, indent=2, ensure_ascii=False)
-
-                        with open(object_name + fr'\{type_}_configs_port88.yaml', "w", encoding='utf-8') as f:
-                            very_good_config["inbounds"][0]["port"] = 88
-                            json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                        generate_2_config(very_good_config, file_name_8899, file_name_88)
                         # time.sleep(2)
                         # # upload(fr'{type_}_configs_port{local_port}.yaml')
                         # # upload(fr'{type_}_configs_port88.yaml')
@@ -1024,13 +1041,7 @@ def main_proxy(local_port=8899):
             cmd_on_color.printRed(f'{exe_name}前{node_index}个速度最快的都不能上网！准备重新获取最新IP配置！')
             very_good_config = get_config_informationurl(local_port)
             if very_good_config and very_good_config != -1:
-                # 保存到文件
-                with open(object_name + fr'\{type_}_configs_port{local_port}.yaml', "w", encoding='utf-8') as f:
-                    json.dump(very_good_config, f, indent=2, ensure_ascii=False)
-
-                with open(object_name + fr'\{type_}_configs_port88.yaml', "w", encoding='utf-8') as f:
-                    very_good_config["inbounds"][0]["port"] = 88
-                    json.dump(very_good_config, f, indent=2, ensure_ascii=False)
+                generate_2_config(very_good_config, file_name_8899, file_name_88)
                 # time.sleep(2)
                 # upload(fr'{type_}_configs_port{local_port}.yaml')
                 # upload(fr'{type_}_configs_port88.yaml')
@@ -1640,5 +1651,5 @@ def main_proxy_log():
 if __name__ == "__main__":
     # main_proxy()
 
-    # main_proxy_log()
-    get_config_informationurl(8899)
+    main_proxy_log()
+    # get_config_informationurl(8899)
