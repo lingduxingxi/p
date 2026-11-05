@@ -247,6 +247,8 @@ def d_f(url=None, file_path=None, proxy_port=None, headers=None, data=None):
 def download_file_state(url=None, file_path=None, proxy_port=None, headers=None, data=None):
     print('测速下载图片的地址为：' + str(url))
     print('测速下载本地的路径为：' + str(file_path))
+    if 'https://i.pinimg.com/originals/cd' in url:
+        file_path = str(file_path).replace(".zip",".gif")
     n = 0
     average_speed = '-1'
     total_size = -1
