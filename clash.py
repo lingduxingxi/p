@@ -28,7 +28,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 import download_files
 from notification_simulator import show_notification
 from run_port_exe import run_exe
-from upload_node import upload
+from upload_node import upload, get_clash7, download_file2
 import yaml
 
 today = time.strftime('%Y%m%d', time.localtime())
@@ -48,13 +48,13 @@ url2_source_list = [
 url1_list = [
                     "https://raw.githubusercontent.com/shifeiquan520/shifeiquan3/refs/heads/main/output/clash.yaml", #
                     "https://raw.githubusercontent.com/PuddinCat/BestClash/refs/heads/main/proxies.yaml", #
-                    "https://github.com/VPN-Subcription-Links/ClashX-V2Ray-TopFreeProxy/raw/refs/heads/main/combine/clash.config.yaml", #
+                    "https://raw.githubusercontent.com/VPN-Subcription-Links/ClashX-V2Ray-TopFreeProxy/refs/heads/main/combine/clash.config.yaml", #
                     "https://raw.githubusercontent.com/snakem982/proxypool/27cc980cfc0569b07b143ea169cc0e78f5a9d40b/source/clash-meta-2.yaml", #
                     "https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.yml", #
-                    "https://github.com/sunmiao4458/free-proxy-airport/raw/refs/heads/main/output/clash.yaml", #
-                    "https://github.com/ermaozi01/free_clash_vpn/raw/78b2482c49101d57efc01566258c52c032fd0cc3/subscribe/clash.yml", #
-                    "https://github.com/SnapdragonLee/SystemProxy/raw/489d52526250ec86dd7c86502ee3904f0e245580/dist/clash_config_extra.yaml", #
-                    "https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/clash.yml", #
+                    "https://raw.githubusercontent.com/sunmiao4458/free-proxy-airport/refs/heads/main/output/clash.yaml", #
+                    "https://raw.githubusercontent.com/ermaozi01/free_clash_vpn/78b2482c49101d57efc01566258c52c032fd0cc3/subscribe/clash.yml", #
+                    "https://raw.githubusercontent.com/SnapdragonLee/SystemProxy/489d52526250ec86dd7c86502ee3904f0e245580/dist/clash_config_extra.yaml", #
+                    "https://raw.githubusercontent.com/cbusifabcap/daily_free_vpn/refs/heads/main/sub/Clash.yml", #
 
                     ]#备用 可筛选可用的ss   原生网站
 
@@ -68,18 +68,18 @@ https://betternode.githubrowcontent.com/2025/05/20250525.txt #更新不及时
 https://oneclash.githubrowcontent.com/2025/05/20250525.txt #与上一个一样
 https://onenode.githubrowcontent.com/2025/05/20250525.txt #与上一个一样
 https://nodedog.githubrowcontent.com/2025/05/20250525.txt #与上一个一样
-http://wanzhuanmi.cczzuu.top/node/20250525-v2ray.txt
+http://wanzhuanmi.cczzuu.top/node/20250525-clash.txt
 https://raw.githubusercontent.com/ripaojiedian/freenode/main/sub  #8-9 小时更新一次
 https://raw.dgithub.xyz/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt  最多！
-https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2  很多  #8-9 小时更新一次
+https://raw.githubusercontent.com/aiboboxx/clashfree/main/v2  很多  #8-9 小时更新一次
 https://proxy.v2gh.com/https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub    #较多  39 minutes 更新一次
 https://raw.githubusercontent.com/hello-world-1989/cn-news/main/end-gfw-together  # 8分钟 1次
-https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt   #不用解码  12小时
+https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/clash.txt   #不用解码  12小时
 https://raw.githubusercontent.com/Huibq/TrojanLinks/refs/heads/master/links/vmess  # 1 hour ago  有点小多
 #https://github.com/abshare3/abshare3.github.io  #公益流量有限  ss 需要爬取
 #https://github.com/mksshare/mksshare.github.io  #公益流量有限  ss 需要爬取
 # "https://jiang.netlify.app/",#不理想  有效节点极低
-https://jichangtuijian.com/%E5%85%8D%E8%B4%B9ssr%E5%92%8Cv2ray%E6%9C%BA%E5%9C%BA.html  节点池
+https://jichangtuijian.com/%E5%85%8D%E8%B4%B9ssr%E5%92%8Cclash%E6%9C%BA%E5%9C%BA.html  节点池
 https://github.com/peasoft/NoMoreWalls/blob/master/list_raw.txt
 https://node.freeclashx.com/uploads/2026/03/1-20260309.txt  
 https://github.com/shabane/kamaji/blob/master/hub/vless.txt
@@ -126,8 +126,8 @@ file_name_88 = f'{type_}_configs_port88.yaml'
 
 
 # 配置区域 ============================================
-V2RAY_CONFIG_PATH = r"config.yaml"  # V2Ray 配置文件路径
-V2RAY_EXE_PATH = 'V2Ray'  # V2Ray 主程序路径
+clash_CONFIG_PATH = r"config.yaml"  # clash 配置文件路径
+clash_EXE_PATH = 'clash'  # clash 主程序路径
 NODES = [
     {"name": "节点1", "ip": "114.132.40.118", "port": 30018, "id": "ffc75281-6c9a-4cd7-8af6-aaa12eb7496f"},
     {"name": "节点2", "ip": "195.154.40.247", "port": 39604, "id": "ade83fd4-5fe3-4862-8edf-be9eeb182435"},
@@ -141,6 +141,436 @@ SPEED_TEST_URL = "https://i.pinimg.com/originals/cd/55/08/cd5508e5c2e50e38e4227a
 
 
 import sys
+
+
+import re
+import yaml
+from pathlib import Path
+from collections import defaultdict
+# "cycle" = 坏引用循环映射到真实节点; "drop" = 直接删除坏引用
+REPLACE_MODE = "cycle"
+
+# Clash 内置/合法引用，不算坏引用
+BUILTIN_NAMES = {"DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE"}
+
+
+# ---------- 内部工具 ----------
+
+def _load_yaml(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.load(f, Loader=yaml.SafeLoader)
+
+
+def _dump_yaml(data, path):
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            data,
+            f,
+            allow_unicode=True,     # 保留中文/emoji
+            sort_keys=False,        # 保持键顺序
+            default_flow_style=False,
+            width=1000000,
+        )
+
+
+def _default_output_path(url_yaml):
+    """clash19.yaml -> clash19_fixed.yaml"""
+    root, ext = os.path.splitext(url_yaml)
+    return f"{root}_fixed{ext or '.yaml'}"
+
+
+# ---------- 主函数 ----------
+
+def fix_clash_config(url_yaml, output_yaml=None):
+    """
+    读取 url_yaml，修复 proxy-groups 中引用了不存在节点的项，
+    写出到 output_yaml（缺省为 <原名>_fixed.yaml）。
+
+    返回 dict:
+        {
+          "input":  输入路径,
+          "output": 输出路径,
+          "total_fixed": 替换的坏引用数量,
+          "bad_groups": {组名: [坏引用列表...]},
+        }
+    """
+    if output_yaml is None:
+        output_yaml = _default_output_path(url_yaml)
+
+    print(f"[*] 读取 {url_yaml}")
+    data = _load_yaml(url_yaml)
+
+    proxies = data.get("proxies") or []
+    groups = data.get("proxy-groups") or []
+
+    # 1) 真实节点名（保持顺序 + 去重）
+    real_names = []
+    seen = set()
+    for p in proxies:
+        name = p.get("name")
+        if name and name not in seen:
+            seen.add(name)
+            real_names.append(name)
+
+    if not real_names:
+        raise ValueError("proxies 为空，无法修复")
+
+    # 代理组名字本身也是合法引用
+    group_names = {g.get("name") for g in groups if g.get("name")}
+    legal_names = seen | BUILTIN_NAMES | group_names
+
+    # 2) 统计坏引用（用于报告）
+    bad_groups = {}
+    for g in groups:
+        gname = g.get("name", "<unnamed>")
+        bad = [n for n in (g.get("proxies") or []) if n not in legal_names]
+        if bad:
+            bad_groups[gname] = bad
+
+    if not bad_groups:
+        print("[+] 未发现坏引用，配置已正确")
+        _dump_yaml(data, output_yaml)
+        return {
+            "input": url_yaml,
+            "output": output_yaml,
+            "total_fixed": 0,
+            "bad_groups": {},
+        }
+
+    # 3) 循环替换
+    cursor = 0
+    total_fixed = 0
+    for g in groups:
+        gtype = g.get("type")
+        new_list = []
+        for name in (g.get("proxies") or []):
+            if name in legal_names:
+                new_list.append(name)
+            elif REPLACE_MODE == "cycle":
+                new_list.append(real_names[cursor % len(real_names)])
+                cursor += 1
+                total_fixed += 1
+            # REPLACE_MODE == "drop" 时什么都不加
+
+        # 去重（保序）
+        deduped, dseen = [], set()
+        for n in new_list:
+            if n not in dseen:
+                dseen.add(n)
+                deduped.append(n)
+
+        # select/url-test 组不能为空，兜底放第一个真实节点
+        if not deduped and gtype in ("select", "url-test", "fallback", "load-balance"):
+            deduped = [real_names[0]]
+
+        g["proxies"] = deduped
+
+    # 4) 报告
+    print(f"[+] {len(bad_groups)} 个代理组含坏引用，共替换 {total_fixed} 处：")
+    for gname, bad in bad_groups.items():
+        preview = ", ".join(bad[:3]) + (" ..." if len(bad) > 3 else "")
+        print(f"    - {gname}: {len(bad)} 处（例: {preview}）")
+
+    # 5) 写回
+    print(f"[*] 写入 {output_yaml}")
+    _dump_yaml(data, output_yaml)
+    print("[+] 完成")
+
+    return {
+        "input": url_yaml,
+        "output": output_yaml,
+        "total_fixed": total_fixed,
+        "bad_groups": bad_groups,
+    }
+
+
+
+BUILTIN_POLICIES = {
+    "DIRECT",
+    "REJECT",
+    "REJECT-DROP",
+    "PASS",
+    "COMPATIBLE",
+    "GLOBAL",
+    "BLOCK",
+}
+
+
+def extract_node_keys(name):
+    """提取节点名称中的国家代码和编号。"""
+
+    if not isinstance(name, str):
+        return set()
+
+    pattern = r"(?<![A-Za-z])([A-Za-z]{2})[_\-\s]*0*(\d+)(?!\d)"
+
+    return {
+        f"{country.upper()}{int(number)}"
+        for country, number in re.findall(pattern, name)
+    }
+
+
+def repair_clash_config(url_yaml, output_yaml=None):
+    """
+    修复 Clash YAML 配置。
+
+    参数：
+        url_yaml: 原始 YAML 文件路径
+        output_yaml: 修复后文件路径，可选
+
+    返回：
+        修复成功返回输出文件路径；
+        失败返回 None。
+    """
+
+    input_path = Path(url_yaml)
+
+    if not input_path.exists():
+        print(f"[错误] 找不到配置文件：{input_path}")
+        return None
+
+    if output_yaml is None:
+        output_path = input_path.with_name(
+            f"{input_path.stem}_fixed{input_path.suffix}"
+        )
+    else:
+        output_path = Path(output_yaml)
+
+    try:
+        # ==================================================
+        # 1. 读取 YAML
+        # ==================================================
+
+        with input_path.open("r", encoding="utf-8-sig") as f:
+            config = yaml.safe_load(f)
+
+        if not isinstance(config, dict):
+            raise ValueError("YAML 根节点不是字典")
+
+        proxies = config.get("proxies", [])
+        proxy_groups = config.get("proxy-groups", [])
+
+        if not isinstance(proxies, list):
+            raise ValueError("proxies 格式错误")
+
+        if not isinstance(proxy_groups, list):
+            raise ValueError("proxy-groups 格式错误")
+
+        # ==================================================
+        # 2. 建立真实节点索引
+        # ==================================================
+
+        proxy_names = {
+            p["name"]
+            for p in proxies
+            if isinstance(p, dict)
+            and isinstance(p.get("name"), str)
+        }
+
+        group_names = {
+            g["name"]
+            for g in proxy_groups
+            if isinstance(g, dict)
+            and isinstance(g.get("name"), str)
+        }
+
+        valid_refs = (
+            proxy_names
+            | group_names
+            | BUILTIN_POLICIES
+        )
+
+        node_index = defaultdict(list)
+
+        for proxy in proxies:
+            if not isinstance(proxy, dict):
+                continue
+
+            name = proxy.get("name")
+
+            if not isinstance(name, str):
+                continue
+
+            for key in extract_node_keys(name):
+                node_index[key].append(name)
+
+        # ==================================================
+        # 3. 修复代理组
+        # ==================================================
+
+        replaced = 0
+        removed = 0
+        unchanged = 0
+        ambiguous = []
+
+        for group in proxy_groups:
+
+            if not isinstance(group, dict):
+                continue
+
+            members = group.get("proxies")
+
+            if not isinstance(members, list):
+                continue
+
+            group_name = group.get("name", "未命名代理组")
+            new_members = []
+
+            for member in members:
+
+                if not isinstance(member, str):
+                    new_members.append(member)
+                    continue
+
+                # 已存在的节点、组引用、内置策略
+                if member in valid_refs:
+                    new_members.append(member)
+                    unchanged += 1
+                    continue
+
+                # 国家代码 + 编号匹配
+                candidates = set()
+
+                for key in extract_node_keys(member):
+                    candidates.update(node_index.get(key, []))
+
+                if len(candidates) == 1:
+
+                    real_name = next(iter(candidates))
+                    new_members.append(real_name)
+                    replaced += 1
+
+                    print(f"[替换] {member} -> {real_name}")
+
+                elif len(candidates) > 1:
+
+                    ambiguous.append(
+                        (group_name, member, sorted(candidates))
+                    )
+
+                    print(f"[歧义] {group_name}: {member}")
+                    for candidate in sorted(candidates):
+                        print(f"       候选：{candidate}")
+
+                else:
+
+                    removed += 1
+                    print(f"[删除失效引用] {group_name}: {member}")
+
+            # 保持顺序并去重
+            group["proxies"] = list(dict.fromkeys(new_members))
+
+        # ==================================================
+        # 4. 修复 DNS 中不存在的 gfw 分类
+        # ==================================================
+
+        dns_removed = 0
+
+        dns = config.get("dns")
+
+        if isinstance(dns, dict):
+
+            fallback_filter = dns.get("fallback-filter")
+
+            if isinstance(fallback_filter, dict):
+
+                geosite = fallback_filter.get("geosite")
+
+                if isinstance(geosite, list):
+
+                    new_geosite = [
+                        item for item in geosite
+                        if not (
+                            isinstance(item, str)
+                            and item.strip().lower() == "gfw"
+                        )
+                    ]
+
+                    dns_removed = len(geosite) - len(new_geosite)
+
+                    if dns_removed:
+
+                        if new_geosite:
+                            fallback_filter["geosite"] = new_geosite
+                        else:
+                            fallback_filter.pop("geosite", None)
+
+                        print("[DNS] 已删除 fallback-filter 中的 gfw")
+
+        # ==================================================
+        # 5. 检查所有代理组引用
+        # ==================================================
+
+        errors = []
+
+        for group in proxy_groups:
+
+            if not isinstance(group, dict):
+                continue
+
+            group_name = group.get("name", "未命名代理组")
+
+            for member in group.get("proxies", []):
+
+                if isinstance(member, str) and member not in valid_refs:
+                    errors.append((group_name, member))
+
+        # 有歧义或无效引用时不输出
+        if ambiguous or errors:
+
+            print("[失败] 存在未解决的代理组引用，未生成文件")
+
+            for group_name, member in errors:
+                print(f"  {group_name}: {member}")
+
+            return None
+
+        # ==================================================
+        # 6. 输出修复文件
+        # ==================================================
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with output_path.open("w", encoding="utf-8", newline="\n") as f:
+
+            yaml.safe_dump(
+                config,
+                f,
+                allow_unicode=True,
+                sort_keys=False,
+                default_flow_style=False,
+                width=120
+            )
+
+        # ==================================================
+        # 7. 再次读取验证
+        # ==================================================
+
+        with output_path.open("r", encoding="utf-8") as f:
+            check_config = yaml.safe_load(f)
+
+        if not isinstance(check_config, dict):
+            raise ValueError("输出文件验证失败")
+
+        print("\n========== Clash 修复完成 ==========")
+        print(f"输入文件：{input_path}")
+        print(f"输出文件：{output_path}")
+        print(f"代理节点：{len(proxies)}")
+        print(f"代理组：{len(proxy_groups)}")
+        print(f"成功替换：{replaced}")
+        print(f"删除失效引用：{removed}")
+        print(f"保留原有引用：{unchanged}")
+        print(f"删除 DNS 无效分类：{dns_removed}")
+        print("剩余无效引用：0")
+
+        return str(output_path)
+
+    except Exception as e:
+
+        print(f"[修复失败] {e}")
+        return None
+
+
 
 
 def extract_base64_from_data(data):
@@ -246,9 +676,9 @@ def evaluate_node(node: Dict) -> Dict:
     }
 
 
-def update_v2ray_config(best_node: Dict):
-    """修改V2Ray配置文件"""
-    with open(V2RAY_CONFIG_PATH, 'r', encoding='utf-8') as f:
+def update_clash_config(best_node: Dict):
+    """修改clash配置文件"""
+    with open(clash_CONFIG_PATH, 'r', encoding='utf-8') as f:
         config = json.load(f)
 
     # 更新outbound配置
@@ -258,15 +688,15 @@ def update_v2ray_config(best_node: Dict):
             outbound["settings"]["vnext"][0]["port"] = best_node["port"]
             outbound["settings"]["vnext"][0]["users"][0]["id"] = best_node["id"]
 
-    with open(V2RAY_CONFIG_PATH, 'w', encoding='utf-8') as f:
+    with open(clash_CONFIG_PATH, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=2)
 
 
-def restart_v2ray():
-    """重启V2Ray服务"""
-    run_command(f'taskkill /f /im v2ray.exe')
+def restart_clash():
+    """重启clash服务"""
+    run_command(f'taskkill /f /im clash.exe')
     time.sleep(2)
-    subprocess.Popen([V2RAY_EXE_PATH, '-config', V2RAY_CONFIG_PATH], shell=True)
+    subprocess.Popen([clash_EXE_PATH, '-config', clash_CONFIG_PATH], shell=True)
 
 def Drission_get_Page(url):
     co = ChromiumOptions()
@@ -290,7 +720,7 @@ def Drission_get_Page(url):
     return html
 
 
-def get_ss(ss_url=f'https://v2rayse.com/fs/public/{today}/kdfbypk.txt'):
+def get_ss(ss_url=f'https://clashse.com/fs/public/{today}/kdfbypk.txt'):
     # import requests
     proxies = {"http": "socks5h://127.0.0.1:" + '0', "https": "socks5h://127.0.0.1:" + '0'}
     # proxy_port_list = [0,88, 8100, 10801, 10802, 10805, 10806, 8899, 10999]
@@ -526,14 +956,68 @@ def find_proxy_group(url_yaml):
                 return name
 
     raise ValueError("没有找到可用的代理组！")
+
+
+def merge_proxies(template_file="clash7.yaml",
+                  proxies_file="clash_proxies.yaml",
+                  output_file="clash_proxies_full.yaml"):
+    # 1. 读取完整模板
+    with open(template_file, "r", encoding="utf-8") as f:
+        template = f.read()
+
+    # 2. 读取只有 proxies 的文件，提取 proxies 块的内容（不含 "proxies:" 这一行）
+    with open(proxies_file, "r", encoding="utf-8") as f:
+        proxies_text = f.read()
+
+    # 提取 proxies: 之后的内容（去掉顶部的 "proxies:" 行）
+    m = re.search(r'^\s*proxies:\s*\n(.*)', proxies_text, re.DOTALL | re.MULTILINE)
+    if not m:
+        raise ValueError("clash_proxies.yaml 中未找到 proxies: 段")
+    new_proxies_body = m.group(1).rstrip() + "\n"
+
+    # 3. 在模板里定位 proxies: 到下一个顶格 key 之间的内容，并替换
+    pattern = re.compile(
+        r'(^proxies:\s*\n)(.*?)(?=^\S+:)',   # 匹配 proxies: 块，直到下一个顶格 key
+        re.DOTALL | re.MULTILINE
+    )
+    if not pattern.search(template):
+        raise ValueError("clash7.yaml 中未找到 proxies: 段")
+
+    merged = pattern.sub(lambda m: m.group(1) + new_proxies_body, template, count=1)
+
+    # 4. 写出
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(merged)
+    print(f"已生成: {output_file}")
+
+
+
 def get_clash_link():
     url_yamls = []
     for i, url in enumerate(url1_list):
+
         if i == 3:
             url_yaml = f"{type_}1{len(url1_list)+1}.yaml"
         else:
             url_yaml = f"{type_}1{i+1}.yaml"
-        download_files.download_file(url, url_yaml)
+
+        if 'cbusifabcap' in url:
+            get_clash7() #'clash7.yaml'
+            # download_files.download_file(url, url_yaml)
+            download_file2('https://ghfile.geekertao.top/' + url, "clash_proxies.yaml")
+            download_files.download_file(url, url_yaml)
+            merge_proxies(output_file=url_yaml)
+            # url_yaml = "clash19.yaml"
+
+            result = fix_clash_config(url_yaml)
+            print("\n结果:", result)
+            # fixed_yaml = repair_clash_config(url_yaml)
+            # if fixed_yaml:
+            #     print(f"\n修复成功：{fixed_yaml}")
+        else:
+            # download_files.download_file(url, url_yaml)
+            download_file2('https://ghfile.geekertao.top/' + url, url_yaml)
+            download_files.download_file(url, url_yaml)
         with open(url_yaml, "r", encoding="utf-8") as f:
             content = f.read()
         # proxy_group_name = find_proxy_group(url_yaml)
@@ -659,8 +1143,8 @@ def get_config_informationurl(local_port):
     cmd_on_color.printBlu(
         f"跳过的非yaml/暂不支持yaml数目：{len(skipped_node_list)}个"
     )
-    cmd_on_color.printCya(f"总共需要处理的yaml数目：{len(node_link_list)}个,均可以上网的为{len(backup_valid_node_list)}个：{backup_valid_node_list}")
-    cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效yaml的速度列表：{average_speed_list}')
+    cmd_on_color.printCya(f"总共需要处理的yaml数目：{len(node_link_list)}个,均可以上网的为{len(backup_valid_node_list)+len(valid_node_list)}个：{backup_valid_node_list+valid_node_list}")
+    cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效yaml的速度(大于2M)列表：{average_speed_list}')
     if len(average_speed_list) == 0:#如果yaml为0个  就切换备用yaml
         average_speed_list = backup_average_speed_list
         valid_node_list = backup_valid_node_list  #[yaml]
@@ -736,18 +1220,18 @@ def download_file_state(file_path, url, proxy_port):
     return err
 
 
-def kill_v2rayN_Alvin10899_exe():
-    print('开始终止v2rayN_Alvin10899.exe')
+def kill_clashN_Alvin10899_exe():
+    print('开始终止clashN_Alvin10899.exe')
     n = 0
     p = 0
     while True:
-        os.system("taskkill /F /IM v2rayN_Alvin10899.exe")
+        os.system("taskkill /F /IM clashN_Alvin10899.exe")
         not_kill_list = []
         pids = psutil.pids()
         for pid in pids:
             try:
                 p = psutil.Process(pid)
-                if 'v2rayN_Alvin10899' in p.name():
+                if 'clashN_Alvin10899' in p.name():
                     not_kill_list.append('未杀死！')
                     #os.system("taskkill /PID " + str(p.pid))
                     #os.system('taskkill /pid ' + str(p.pid) + ' /f')
@@ -757,16 +1241,16 @@ def kill_v2rayN_Alvin10899_exe():
                 pass
         
         if len(not_kill_list) != 0:
-            print('终止v2rayN_Alvin10899失败！准备开始重新终止！')
+            print('终止clashN_Alvin10899失败！准备开始重新终止！')
             try:
                 #os.system("taskkill /PID " + str(p.pid))
                 #os.system('taskkill /pid ' + str(p.pid) + ' /f')
-                os.system("taskkill /F /IM v2rayN_Alvin10899.exe")
+                os.system("taskkill /F /IM clashN_Alvin10899.exe")
             except:
                 traceback.print_exc()
                 pass
         else:
-            print('终止v2rayN_Alvin10899成功！')
+            print('终止clashN_Alvin10899成功！')
             break
         
         time.sleep(2)
@@ -819,7 +1303,7 @@ port88_err_num = 1
 def start_exe(local_port, run_type='单独', err_node_number=1,show_notification_state = True):
     global port88_err_num
     if run_type=='所有':
-        exe_name = f"v2ray_all.exe"
+        exe_name = f"clash_all.exe"
     else:
         exe_name = f"{type_}.exe"
     exe_name_path = fr"{object_name}\{exe_name}"
@@ -865,7 +1349,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
                     if f'不可以上网' in state or f'不可知的异常' in state:
                         cmd_on_color.printRed(f'{exe_name}第{i+1}个节点无法上网，准备切换第{i+2}个节点')
                         if run_type == '所有':
-                            exe_name = f"v2ray_all.exe"
+                            exe_name = f"clash_all.exe"
                             kill_exe(exe_name)
                         else:
                             kill_exe(exe_name)
@@ -1651,5 +2135,16 @@ def main_proxy_log():
 if __name__ == "__main__":
     # main_proxy()
 
-    main_proxy_log()
+    # main_proxy_log()
     # get_config_informationurl(8899)
+
+    download_file2('https://ghfile.geekertao.top/' + url, "clash_proxies.yaml")
+    download_files.download_file(url, url_yaml)
+    merge_proxies(output_file=url_yaml)
+    # url_yaml = "clash19.yaml"
+
+    result = fix_clash_config(url_yaml)
+    print("\n结果:", result)
+    # fixed_yaml = repair_clash_config(url_yaml)
+    # if fixed_yaml:
+    #     print(f"\n修复成功：{fixed_yaml}")
