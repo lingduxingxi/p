@@ -341,6 +341,7 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
                             port8100_state = ''
                             for attempt in range(attempt_count):
                                 try:
+                                    time.sleep(8)
                                     # resp = requests.get(test_url, proxies=proxies, timeout=8)
                                     resp = requests.get(test_url, proxies=proxies, timeout=(10, 15), verify=False,
                                                         headers={'User-Agent': 'Mozilla/5.0'})
