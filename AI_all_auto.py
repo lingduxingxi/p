@@ -23,6 +23,7 @@ from SSR2 import start_exe as start_SSR2_exe
 # from kill_all_pid_from_filenames_python_name_pid import kill_pid
 from v2ray1 import start_exe as start_v2ray1_exe
 from v2ray2 import start_exe as start_v2ray2_exe
+from clash import start_exe as start_clash_exe
 from notification_simulator import show_notification
 
 # from SS1 import get_config_informationurl, get_config
@@ -293,18 +294,29 @@ def run_all(state_all='所有'):
                                         n += 1
                                         continue
                                     if f'不可以上网' in state_v2ray2 or f'不可知的异常' in state_v2ray2:
-                                        cmd_on_color.printRed(f"循环{n}次后，都不能上网，又开始使用端口 8100 进行下一个循环")
+                                        cmd_on_color.printRed(f"v2ray2 不可以上网，准备更换 clash")
                                         if n <= show_notification_n:
-                                            show_notification(f"循环{n}次后，都不能上网，又开始使用端口 8100 进行下一个循环", "不可以上网！", "error")
-                                        states = f"{state_goflyway}、{state_SS1}、{state_SS2}、{state_SSR1}、{state_SSR2}、{state_v2ray1}、{state_v2ray2}"
-                                        if '配置文件不存在' not in states:#配置文件存在
-                                            if notification_tip:
-                                                notification_tip = False
-                                                # answer = ask_yes_no_question("通知过于频繁？是否需要关闭所有通知？")
-                                                # if answer:
-                                                show_notification_state = False  # 关闭通知
-                                        else:#配置文件不存在
-                                            pass
+                                            show_notification(f"端口 10999 链接错误！\n准备更换端口为 8899", "不可以上网！", "error")
+                                        # os.system("taskkill /F /IM clash_all.exe")
+                                        kill_exe('clash_all.exe')
+                                        state_clash = start_clash_exe(all_local_port, '所有', n, show_notification_state)
+                                        kill_exe('clash_all.exe')
+                                        if '切换为端口8100' in state_clash:
+                                            n += 1
+                                            continue
+                                        if f'不可以上网' in state_clash or f'不可知的异常' in state_clash:
+                                            cmd_on_color.printRed(f"循环{n}次后，都不能上网，又开始使用端口 8100 进行下一个循环")
+                                            if n <= show_notification_n:
+                                                show_notification(f"循环{n}次后，都不能上网，又开始使用端口 8100 进行下一个循环", "不可以上网！", "error")
+                                            states = f"{state_goflyway}、{state_SS1}、{state_SS2}、{state_SSR1}、{state_SSR2}、{state_v2ray1}、{state_v2ray2}、{state_clash}"
+                                            if '配置文件不存在' not in states:#配置文件存在
+                                                if notification_tip:
+                                                    notification_tip = False
+                                                    # answer = ask_yes_no_question("通知过于频繁？是否需要关闭所有通知？")
+                                                    # if answer:
+                                                    show_notification_state = False  # 关闭通知
+                                            else:#配置文件不存在
+                                                pass
         except Exception as err:
             try:
                 # traceback.print_exc()
