@@ -370,6 +370,8 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
                                             local_port_secondary = '未知'
                                             if 'GoflywayTools' in type_:
                                                 local_port_secondary = 8100
+                                            if 'clash' in type_:
+                                                local_port_secondary = 8899
                                             if 'SS1' in type_:
                                                 local_port_secondary = 10801
                                             if 'SS2' in type_:
