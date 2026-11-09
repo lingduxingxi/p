@@ -26,6 +26,7 @@ import base64
 from urllib.parse import urlparse, parse_qs, unquote
 
 import download_files
+from merge_clash_yaml import merge_proxies
 from notification_simulator import show_notification
 from run_port_exe import run_exe
 from upload_node import upload, get_clash7, download_file2
@@ -958,7 +959,7 @@ def find_proxy_group(url_yaml):
     raise ValueError("没有找到可用的代理组！")
 
 
-def merge_proxies(template_file="clash7.yaml",
+def merge_proxies_old(template_file="clash7.yaml",
                   proxies_file="clash_proxies.yaml",
                   output_file="clash_proxies_full.yaml"):
     # 1. 读取完整模板
@@ -2133,18 +2134,7 @@ def main_proxy_log():
 
 
 if __name__ == "__main__":
-    # main_proxy()
+    main_proxy()
 
     # main_proxy_log()
     # get_config_informationurl(8899)
-
-    download_file2('https://ghfile.geekertao.top/' + url, "clash_proxies.yaml")
-    download_files.download_file(url, url_yaml)
-    merge_proxies(output_file=url_yaml)
-    # url_yaml = "clash19.yaml"
-
-    result = fix_clash_config(url_yaml)
-    print("\n结果:", result)
-    # fixed_yaml = repair_clash_config(url_yaml)
-    # if fixed_yaml:
-    #     print(f"\n修复成功：{fixed_yaml}")
