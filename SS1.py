@@ -227,7 +227,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
             print(f"文件 '{file_path}' 存在")
             # cmd = f'"{exe_name_path}" -c "{object_name}\\{type_}_configs_port{local_port}.json" -vvv'
             cmd = f'"{exe_name_path}" -c "{object_name}\\{type_}_configs_port{local_port}.json"'
-            state = str(run_exe(local_port, run_type,cmd,object_name_output_log,type_,exe_name,object_name,exe_name_path,err_node_number,show_notification_state))
+            state = str(run_exe(local_port, run_type,cmd,object_name_output_log,type_,exe_name,pid,exe_name_path,err_node_number,show_notification_state))
             if '表示子进程已经终止' in state or '端口冲突' in state:
                 port88_err_num += 1
                 print('port88_err_num200', port88_err_num)
