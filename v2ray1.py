@@ -801,7 +801,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
                     cmd = subprocess.list2cmdline([exe_name_path, "run", "-c", config_arg])
                 else:
                     cmd = subprocess.list2cmdline([exe_name_path, "run", "-config", config_arg])
-                state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, object_name, exe_name_path,err_node_number,show_notification_state))
+                state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, pid, exe_name_path,err_node_number,show_notification_state))
                 if '表示子进程已经终止' in state or '端口冲突' in state:
                     port88_err_num+=1
                     print('port88_err_num565',port88_err_num)
@@ -960,6 +960,13 @@ def main_proxy(local_port=10822):
 
     while True:
         try:
+            # 新增修复代码
+            try:
+                with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
+                    valid_node_list = eval(f.read())
+                node_index = len(valid_node_list)
+            except:
+                node_index = 0
             cmd_on_color.printMag(fr'需要运行并【可以上网】的节点数目为：{node_index}个')
             for i in range(node_index):
                 state_ = start_exe(local_port,err_node_number=n+1)
@@ -995,7 +1002,7 @@ def main_proxy(local_port=10822):
                                 max_value = value
                                 max_index = old_idx
                                 very_good_node = valid_node_list[max_index]
-                                cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
+                                cmd_on_color.printBlu(f"1005节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
                                 node = parse_node(very_good_node)
                                 very_good_config, _selected_core = generate_node_config(very_good_node, node, local_port)
                     # print('very_good_config596',very_good_config)
