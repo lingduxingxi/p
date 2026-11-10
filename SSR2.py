@@ -203,7 +203,7 @@ def start_exe(local_port, run_type='单独', err_node_number=None,show_notificat
             # state = run_exe(local_port, run_type)
             cmd = fr'{exe_name_path} -f {object_name}\{type_}_clash_config_port{local_port}.yaml'  # ssrlocal_clash_SSR1.exe -f clash_config.yaml
             # f'{type_}_clash_config_port10805.yaml'
-            state = str(run_exe(local_port, run_type,cmd,object_name_output_log,type_,exe_name,object_name,exe_name_path,err_node_number,show_notification_state))
+            state = str(run_exe(local_port, run_type,cmd,object_name_output_log,type_,exe_name,pid,exe_name_path,err_node_number,show_notification_state))
             if '表示子进程已经终止' in state or '端口冲突' in state:
                 port88_err_num += 1
                 print('port88_err_num190', port88_err_num)
@@ -1377,8 +1377,8 @@ def get_config_informationurls(local_port):
         return out
 
     congfig_list = dedup_configs(congfig_list1 + congfig_list2 + congfig_list3)
-    with open(fr'ssr1_congfig_list.txt', 'w+', encoding='utf-8') as f:
-        f.write(f"{congfig_list}")
+    # with open(fr'ssr1_congfig_list.txt', 'w+', encoding='utf-8') as f:
+    #     f.write(f"{congfig_list}")
     if len(congfig_list) != 0:
         for proxy in congfig_list:
             # 将字典转换为可哈希的元组表示
@@ -1627,8 +1627,8 @@ def get_config_old(configs, local_port=10806):
 
 
 def main_proxy(local_port=10806):
-    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
-    # download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.yaml", f"{type_}_clash_config_port88.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port{local_port}.yaml", f"{type_}_clash_config_port{local_port}.yaml")
+    download_file(f"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_clash_config_port88.yaml", f"{type_}_clash_config_port88.yaml")
     time.sleep(2)
 
     # 启动监控进程
