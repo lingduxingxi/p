@@ -40,7 +40,7 @@ except Exception as e:
     print(f"创建文件夹失败: {e}")
 with open(fr'{folder_path}\{type_}=》{pid}.txt', 'w+', encoding='utf-8') as f:
     f.write(f'{type_}=>{pid}')
-    f.close()
+    # f.close()
 proxy_port_list = [8100, 10801, 10802, 10805, 10806, 10888, 10822, 10899, 10999, 88, 0]
 logging.captureWarnings(True)  # 强制取消证书验证警告
 timeout = 99
@@ -178,7 +178,7 @@ def start_GoflywayTools_exe(local_port=8100, run_type='单独', err_node_number=
                 # cmd = r'goflyway.exe -up="163.172.120.27:26677" -k="dongtaiwang.co" -l=":88" -lv=info -t=8 -mux=2' # local_port=88 or 8100
                 # cmd = f'{goflyway_exe} -up="{server_address}:{port}" -k="{password}" -l=":{local_port}" -lv=dbg0 -t=30 -mux=2' # dbg0（最高详细级别日志）
                 cmd = f'{exe_name_path} -up="{server_address}:{port}" -k="{password}" -l=":{local_port}" -lv=dbg0 -t=8 -mux=2'  # dbg0（最高详细级别日志）
-                state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, goflyway_exe, object_name, exe_name_path, err_node_number, show_notification_state))
+                state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, goflyway_exe, pid, exe_name_path, err_node_number, show_notification_state))
                 if '表示子进程已经终止' in state or '端口冲突' in state:
                     port88_err_num += 1
                     print('port88_err_num177', port88_err_num)
@@ -355,7 +355,7 @@ def get_config_information(local_port):
                     # webpage = urllib.request.urlopen(req)
                     # proxies = None
                     if n > 8:
-                        print('使用AI_all_auto代理88')
+                        print('358使用AI_all_auto代理88')
                         proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                         webpage = requests.get(url1, headers=headers, timeout=8, proxies=proxies)
                     else:
@@ -386,7 +386,7 @@ def get_config_information(local_port):
                     try:
                         # req = urllib.request.Request(url2)
                         if n > 8:
-                            print('使用AI_all_auto代理88')
+                            print('389使用AI_all_auto代理88')
                             proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                             webpage = requests.get(url2, headers=headers, timeout=8, proxies=proxies)
                         else:
@@ -419,7 +419,7 @@ def get_config_information(local_port):
                         try:
                             # req = urllib.request.Request(url3)
                             if n3 > 2:
-                                print('使用AI_all_auto代理88')
+                                print('422使用AI_all_auto代理88')
                                 proxies = {"http": "socks5h://127.0.0.1:" + str(88), "https": "socks5h://127.0.0.1:" + str(88)}
                                 webpage = requests.get(url3, headers=headers, timeout=8, proxies=proxies)
                             else:
