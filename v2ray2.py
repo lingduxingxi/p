@@ -312,8 +312,8 @@ def Drission_get_Page(url):
 def get_ss(ss_url=f'https://v2rayse.com/fs/public/{today}/kdfbypk.txt'):
     # import requests
     proxies = {"http": "socks5h://127.0.0.1:" + '0', "https": "socks5h://127.0.0.1:" + '0'}
-    # proxy_port_list = [0,88, 8100, 10801, 10802, 10805, 10806, 10822, 10999]
-    proxy_port_list = [0, 88, 8100, 10801, 10802, 10805, 10806, 10822, 10999]
+    # proxy_port_list = [0,88, 8100, 10801, 10802, 10805, 10806, 10999, 10999]
+    proxy_port_list = [0, 88, 8100, 10801, 10802, 10805, 10806, 10999, 10999]
     response = -1
     for proxy_ports in proxy_port_list:
         # if int(proxy_port) == proxy_ports :#指定代理
@@ -664,7 +664,7 @@ def get_config_informationurl(local_port):
         f"跳过的非节点/暂不支持节点数目：{len(skipped_node_list)}个"
     )
     cmd_on_color.printCya(f"总共需要处理的节点数目：{len(node_link_list)}")
-    cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效节点的速度列表：{average_speed_list}')
+    cmd_on_color.printMag(f'测速完成！{len(average_speed_list)}个有效节点的速度列表：{average_speed_list}')#['2.679', '2.392', '2.629', '2.429', '2.271']
     if len(average_speed_list) == 0:  # 如果节点为0个  就切换备用节点
         average_speed_list = backup_average_speed_list
         valid_node_list = backup_valid_node_list
@@ -857,7 +857,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1, show_notificatio
                     cmd = subprocess.list2cmdline([exe_name_path, "run", "-c", config_arg])
                 else:
                     cmd = subprocess.list2cmdline([exe_name_path, "run", "-config", config_arg])
-                state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, object_name, exe_name_path, err_node_number, show_notification_state))
+                state = str(run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, pid, exe_name_path, err_node_number, show_notification_state))
                 if '表示子进程已经终止' in state or '端口冲突' in state:
                     port88_err_num += 1
                     print('port88_err_num565', port88_err_num)
@@ -896,7 +896,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1, show_notificatio
                                     max_value = value
                                     max_index = old_idx
                                     very_good_node = valid_node_list[max_index]
-                                    cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
+                                    cmd_on_color.printBlu(f"899节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！899")
                                     node = parse_node(very_good_node)
                                     very_good_config, core_kind = generate_node_config(very_good_node, node, local_port)
                                     exe_name = SING_BOX_EXE_NAME if core_kind == "sing-box" else f"{type_}.exe"
@@ -913,7 +913,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1, show_notificatio
                                         # time.sleep(2)
                                         # upload(fr'{type_}_configs_port{local_port}.json')
                                         # upload(fr'{type_}_configs_port88.json')
-                                    print(f'开始杀死进程{exe_name}')
+                                    print(f'916开始杀死进程{exe_name}')
                                     kill_all_proxy_cores()  # 停止 Xray 和 sing-box
                         except:
                             state = f'不可以上网，配置文件不存在'
@@ -932,7 +932,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1, show_notificatio
     return state
 
 
-def main_proxy(local_port=10822):
+def main_proxy(local_port=10999):
     download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port{local_port}.json",
                                  f"{type_}_configs_port{local_port}.json")
     download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{type_}_configs_port88.json", f"{type_}_configs_port88.json")
@@ -1013,6 +1013,13 @@ def main_proxy(local_port=10822):
 
     while True:
         try:
+            # 新增修复代码
+            try:
+                with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
+                    valid_node_list = eval(f.read())
+                node_index = len(valid_node_list)
+            except:
+                node_index = 0
             cmd_on_color.printMag(fr'需要运行并【可以上网】的节点数目为：{node_index}个')
             for i in range(node_index):
                 state_ = start_exe(local_port, err_node_number=n + 1)
@@ -1048,7 +1055,7 @@ def main_proxy(local_port=10822):
                                 max_value = value
                                 max_index = old_idx
                                 very_good_node = valid_node_list[max_index]
-                                cmd_on_color.printBlu(f"节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
+                                cmd_on_color.printBlu(f"1051节点: {very_good_node}, 其速度为: {max_value}MB/s，开始将其写入配置文件，并运行！")
                                 node = parse_node(very_good_node)
                                 very_good_config, _selected_core = generate_node_config(very_good_node, node, local_port)
                     # print('very_good_config596',very_good_config)
@@ -1065,7 +1072,7 @@ def main_proxy(local_port=10822):
                         # # upload(fr'{type_}_configs_port{local_port}.json')
                         # # upload(fr'{type_}_configs_port88.json')
 
-                    print(f'开始杀死进程{exe_name}')
+                    print(f'1068开始杀死进程{exe_name}')
                     kill_all_proxy_cores()  # exe_name, exe_name_path, object_name
                 if state_ == f'有一个在运行，不能同时运行2个':
                     def popup():
@@ -1088,7 +1095,7 @@ def main_proxy(local_port=10822):
                 # time.sleep(2)
                 # upload(fr'{type_}_configs_port{local_port}.json')
                 # upload(fr'{type_}_configs_port88.json')
-            print(f'开始杀死进程{exe_name}')
+            print(f'1091开始杀死进程{exe_name}')
             kill_all_proxy_cores()  # exe_name, exe_name_path, object_name
             if n > 18:
                 n = 0
@@ -2371,6 +2378,6 @@ if __name__ == "__main__":
     # main_proxy()
 
     main_proxy_log()
-    # get_config_informationurl1(10822)
-    # get_config_informationurl2(10822)
+    # get_config_informationurl1(10999)
+    # get_config_informationurl2(10999)
 
