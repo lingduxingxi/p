@@ -17,14 +17,14 @@ import win32api
 import win32con
 
 import cmd_on_color
-from download_files import download_file
+# from download_files import download_file
 from notification_simulator import show_notification
-from func_timeout import func_set_timeout
+# from func_timeout import func_set_timeout
 
-from upload_node import download_file2, get_clash2, get_clash1
+# from upload_node import download_file2, get_clash2, get_clash1
 
 logging.captureWarnings(True)  # 强制取消证书验证警告
-
+folder_path = os.getcwd() + r'\python_name_pid'
 import faulthandler
 import signal
 
@@ -212,11 +212,12 @@ class LogManager:
 
 
 
-def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, object_name, exe_name_path,
+def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, pid, exe_name_path,
             err_node_number, show_notification_state=True):
     global connection_success_printed, connection_success_printed2, network_err, all_net_err
+    with open(fr'{folder_path}\{type_}=》{pid}.txt', 'w+', encoding='utf-8') as f:
+        f.write(f'{type_}=>{pid}')
 
-    # port8100_success = '未知状态'
     final_state = '手动退出'
     other_path = os.path.join(object_name_output_log, f'{type_}_{local_port}_err_other.txt')
     log_manager = LogManager(object_name_output_log, f'{type_}_{local_port}')
@@ -298,7 +299,8 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
             global connection_success_printed
             global network_err
             global all_net_err
-
+            success = '301未知状态'
+            port8100_state = '302未知状态'
             try:
                 test_url = "https://api.ipify.org"
                 attempt_count = 8  # 固定尝试次数为3次
@@ -340,6 +342,8 @@ def run_exe(local_port, run_type, cmd, object_name_output_log, type_, exe_name, 
                             success = False
                             port8100_state = ''
                             for attempt in range(attempt_count):
+                                # with open(fr'{folder_path}\{type_}=》{pid}.txt', 'w+', encoding='utf-8') as f:
+                                #     f.write(f'{type_}=>{pid}')
                                 try:
                                     time.sleep(8)
                                     # resp = requests.get(test_url, proxies=proxies, timeout=8)
