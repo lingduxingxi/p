@@ -11,19 +11,8 @@ proxies:
   port: 33336
   protocol: auth_chain_a
   protocol-param: ''
-  remarks: 🇳🇱NL-109.104.153.43-0318
+  remarks: 🇳🇱NL-109.104.153.43-0320
   server: 109.104.153.43
-  type: ssr
-- cipher: chacha20-ietf
-  name: ssr2.762988.xyz:33336
-  obfs: tls1.2_ticket_auth
-  obfs-param: ''
-  password: dongtaiwang.com
-  port: 33336
-  protocol: auth_chain_a
-  protocol-param: ''
-  remarks: 🇺🇸US-140.188.87.3-0331
-  server: ssr2.762988.xyz
   type: ssr
 - cipher: aes-256-cfb
   name: 103.172.116.79:9057
@@ -879,7 +868,7 @@ proxies:
   password: zztw9jk7gu
   port: 32986
   protocol: auth_aes128_sha1
-  protocol-param: 6181:m9oDIc
+  protocol-param: 'NjE4MTptOW9ESWM= # [By EbraSha] ⚡'
   remarks: 🇨🇳 China - Unknown | 36.156.222.25:32986
   server: 36.156.222.25
   type: ssr
@@ -901,7 +890,7 @@ proxies:
   password: Yk4UdrOyQg
   port: 10120
   protocol: auth_aes128_md5
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇨🇳 China - Unknown | 42.157.196.103:10120
   server: 42.157.196.103
   type: ssr
@@ -1122,7 +1111,7 @@ proxies:
   port: 443
   protocol: origin
   protocol-param: ''
-  remarks: 🇺🇸 United States - Fremont | 50.116.2.131:443 2
+  remarks: 🇺🇸 United States - Fremont | 50.116.2.131:443
   server: 50.116.2.131
   type: ssr
 - cipher: chacha20-ietf
@@ -1165,7 +1154,7 @@ proxies:
   password: 4369b96
   port: 12928
   protocol: origin
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇩🇪 Germany - Frankfurt am Main | 68.183.74.63:12928
   server: 68.183.74.63
   type: ssr
@@ -1304,7 +1293,7 @@ proxies:
 - cipher: chacha20-ietf
   name: api.meituan88.com:2205
   obfs: plain
-  obfs-param: OTllMTQ0MzkxLmRvdXlpbi5jJe /vQ==
+  obfs-param: 99e144391.douyin.com
   password: di15PV
   port: 2205
   protocol: auth_aes128_md5
@@ -1436,11 +1425,11 @@ proxies:
 - cipher: chacha20-ietf
   name: api.meituan88.com:7015
   obfs: plain
-  obfs-param: 33f313723.douyin.com
+  obfs-param: MzNmMzEzNzIzLmRvdXlpbi5jJSXvv71bJe /vVx4MWZJSXvvv70l77 9
   password: di15PV
   port: 7015
   protocol: auth_aes128_md5
-  protocol-param: ''
+  protocol-param: MzEzNzIzOmRDd3JuJSXvv70lJe /vVx4MWY=
   remarks: 🌐 Unknown - Unknown | api.meituan88.com:7015
   server: api.meituan88.com
   type: ssr
@@ -1579,11 +1568,11 @@ proxies:
 - cipher: chacha20-ietf
   name: api.meituan88.com:26774
   obfs: plain
-  obfs-param: 33f313723.douyin.com
+  obfs-param: MzNmMzEzNzIzLmRvdXlpbi5jJSXvv71b77 9JSXvv70=
   password: di15PV
   port: 26774
   protocol: auth_aes128_md5
-  protocol-param: ''
+  protocol-param: MzEzNzIzOmRDd3JuJSXvv70l77 9
   remarks: 🌐 Unknown - Unknown | api.meituan88.com:26774
   server: api.meituan88.com
   type: ssr
@@ -1814,7 +1803,7 @@ proxies:
   password: mblank1port
   port: 561
   protocol: auth_aes128_md5
-  protocol-param: 55956:111111
+  protocol-param: 'NTU5NTY6MTExMTEx # [By EbraSha] ⚡'
   remarks: 🇨🇳 China - Unknown | eduall.buzzline.org:561
   server: eduall.buzzline.org
   type: ssr
@@ -1825,7 +1814,7 @@ proxies:
   password: dajkd*/?
   port: 39007
   protocol: auth_aes128_md5
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇺🇸 United States - Los Angeles | glimmerdsds.sdl-sz.com:39007
   server: glimmerdsds.sdl-sz.com
   type: ssr
@@ -1836,7 +1825,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 53845
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇯🇵 Japan - Tokyo | live.bilibilicloud01.com:53845
   server: live.bilibilicloud01.com
   type: ssr
@@ -1847,7 +1836,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54112
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇯🇵 Japan - Tokyo | live.bilibilicloud01.com:54112
   server: live.bilibilicloud01.com
   type: ssr
@@ -1891,7 +1880,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54101
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54101
   server: show.bilibilicloud01.com
   type: ssr
@@ -1902,7 +1891,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54102
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54102
   server: show.bilibilicloud01.com
   type: ssr
@@ -1913,7 +1902,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54103
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54103
   server: show.bilibilicloud01.com
   type: ssr
@@ -1939,6 +1928,17 @@ proxies:
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54115
   server: show.bilibilicloud01.com
   type: ssr
+- cipher: chacha20-ietf
+  name: ssr2.762988.xyz:33336
+  obfs: tls1.2_ticket_auth
+  obfs-param: ''
+  password: dongtaiwang.com
+  port: 33336
+  protocol: auth_chain_a
+  protocol-param: ''
+  remarks: 🇺🇸 United States - San Jose | ssr2.762988.xyz:33336
+  server: ssr2.762988.xyz
+  type: ssr
 - cipher: aes-128-cfb
   name: 14.29.124.168:24005
   obfs: plain
@@ -1947,7 +1947,7 @@ proxies:
   port: 24005
   protocol: origin
   protocol-param: ''
-  remarks: 🇨🇳CN-14.29.124.168-2894
+  remarks: 🇨🇳CN-14.29.124.168-2410
   server: 14.29.124.168
   type: ssr
 - cipher: aes-256-cfb
@@ -1958,7 +1958,7 @@ proxies:
   port: 11708
   protocol: origin
   protocol-param: WWW.YOUNEED.WIN
-  remarks: 🇳🇱NL-94.102.57.163-6046
+  remarks: 🇳🇱NL-94.102.57.163-5570
   server: 94.102.57.163
   type: ssr
 proxy-groups:
@@ -1966,7 +1966,6 @@ proxy-groups:
   name: 自动选最优
   proxies:
   - 109.104.153.43:33336
-  - ssr2.762988.xyz:33336
   - 103.172.116.79:9057
   - 107.151.182.253:8080
   - 109.104.153.70:33336
@@ -2141,6 +2140,7 @@ proxy-groups:
   - show.bilibilicloud01.com:54103
   - show.bilibilicloud01.com:54114
   - show.bilibilicloud01.com:54115
+  - ssr2.762988.xyz:33336
   - 14.29.124.168:24005
   - 94.102.57.163:11708
   tolerance: 50
@@ -2149,7 +2149,6 @@ proxy-groups:
 - name: 负载均衡
   proxies:
   - 109.104.153.43:33336
-  - ssr2.762988.xyz:33336
   - 103.172.116.79:9057
   - 107.151.182.253:8080
   - 109.104.153.70:33336
@@ -2324,6 +2323,7 @@ proxy-groups:
   - show.bilibilicloud01.com:54103
   - show.bilibilicloud01.com:54114
   - show.bilibilicloud01.com:54115
+  - ssr2.762988.xyz:33336
   - 14.29.124.168:24005
   - 94.102.57.163:11708
   strategy: consistent-hashing
