@@ -1396,6 +1396,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 def generate_2_config(very_good_config,file_name_8899,file_name_88):
     print(f"复制文件{very_good_config}到{file_name_8899}")
     copy(very_good_config, file_name_8899)
+    copy(very_good_config, "clash.yaml")
     with open(very_good_config, 'r+', encoding='utf-8') as f:
         very_good_config_r = f.read().replace('8899', '88')
     with open(file_name_88, 'w+', encoding='utf-8') as f:
@@ -1405,9 +1406,10 @@ def generate_2_config(very_good_config,file_name_8899,file_name_88):
 
 def main_proxy(local_port=8899):
 
-    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{file_name_8899}",
-    #                              f"{file_name_8899}")
-    # download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{file_name_88}", f"{file_name_88}")
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{file_name_8899}",
+                                 f"{file_name_8899}")
+    download_files.download_file(fr"https://nvst-video-tio.oss-cn-chengdu.aliyuncs.com/20260909/9/9/{file_name_88}", f"{file_name_88}")
+
     time.sleep(2)
 
     # 启动监控进程
