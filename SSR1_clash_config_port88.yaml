@@ -21,7 +21,7 @@ proxies:
   password: 14fFPrbezE3HDZzsMOr6
   port: 8080
   protocol: origin
-  protocol-param: '# [By EbraSha] 🚀'
+  protocol-param: ''
   remarks: 🇺🇸 United States - Los Angeles | 107.151.182.253:8080 2
   server: 107.151.182.253
   type: ssr
@@ -142,7 +142,7 @@ proxies:
   password: mblank1port
   port: 560
   protocol: auth_aes128_md5
-  protocol-param: 63068:ajhjei123456
+  protocol-param: 'NjMwNjg6YWpoamVpMTIzNDU2 # [By EbraSha] ⚡'
   remarks: 🇨🇳 China - Unknown | 120.198.71.184:560
   server: 120.198.71.184
   type: ssr
@@ -824,7 +824,7 @@ proxies:
   password: dajkdkjda&dj23gsa
   port: 19970
   protocol: auth_aes128_md5
-  protocol-param: 'MTEyNzU6S1dRSGhlcVdvOA== # [By EbraSha] ⚡'
+  protocol-param: 11275:KWQHheqWo8
   remarks: 🇺🇸 United States - Los Angeles | 231103.level3.sdl-sz.com:19970
   server: 231103.level3.sdl-sz.com
   type: ssr
@@ -835,7 +835,7 @@ proxies:
   password: dajkdkjd2a&dj23gsa
   port: 37866
   protocol: auth_aes128_md5
-  protocol-param: 11275:KWQHheqWo8
+  protocol-param: 11275:KWQHheqWo%%�
   remarks: 🇺🇸 United States - Los Angeles | 231103levelx.unclemanco.com:37866
   server: 231103levelx.unclemanco.com
   type: ssr
@@ -868,7 +868,7 @@ proxies:
   password: zztw9jk7gu
   port: 32986
   protocol: auth_aes128_sha1
-  protocol-param: 'NjE4MTptOW9ESWM= # [By EbraSha] ⚡'
+  protocol-param: 6181:m9oDIc
   remarks: 🇨🇳 China - Unknown | 36.156.222.25:32986
   server: 36.156.222.25
   type: ssr
@@ -890,7 +890,7 @@ proxies:
   password: Yk4UdrOyQg
   port: 10120
   protocol: auth_aes128_md5
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇨🇳 China - Unknown | 42.157.196.103:10120
   server: 42.157.196.103
   type: ssr
@@ -1154,7 +1154,7 @@ proxies:
   password: 4369b96
   port: 12928
   protocol: origin
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇩🇪 Germany - Frankfurt am Main | 68.183.74.63:12928
   server: 68.183.74.63
   type: ssr
@@ -1803,7 +1803,7 @@ proxies:
   password: mblank1port
   port: 561
   protocol: auth_aes128_md5
-  protocol-param: 'NTU5NTY6MTExMTEx # [By EbraSha] ⚡'
+  protocol-param: 55956:111111
   remarks: 🇨🇳 China - Unknown | eduall.buzzline.org:561
   server: eduall.buzzline.org
   type: ssr
@@ -1825,7 +1825,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 53845
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] ⚡'
+  protocol-param: ''
   remarks: 🇯🇵 Japan - Tokyo | live.bilibilicloud01.com:53845
   server: live.bilibilicloud01.com
   type: ssr
@@ -1880,7 +1880,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54101
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] ⚡'
+  protocol-param: '# [By EbraSha] 🔒'
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54101
   server: show.bilibilicloud01.com
   type: ssr
@@ -1913,7 +1913,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54114
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] 🚀'
+  protocol-param: '# [By EbraSha] ⚡'
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54114
   server: show.bilibilicloud01.com
   type: ssr
