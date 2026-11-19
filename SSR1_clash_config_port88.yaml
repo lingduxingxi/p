@@ -153,7 +153,7 @@ proxies:
   password: mblank1port
   port: 560
   protocol: auth_aes128_md5
-  protocol-param: 'NjMwNjg6YWpoamVpMTIzNDU2 # [By EbraSha] 🔒'
+  protocol-param: 63068:ajhjei123456
   remarks: 🇨🇳 China - Unknown | 120.198.71.184:560
   server: 120.198.71.184
   type: ssr
@@ -846,7 +846,7 @@ proxies:
   password: dajkdkjd2a&dj23gsa
   port: 37866
   protocol: auth_aes128_md5
-  protocol-param: 11275:KWQHheqWo%%�
+  protocol-param: 11275:KWQHheqWo8
   remarks: 🇺🇸 United States - Los Angeles | 231103levelx.unclemanco.com:37866
   server: 231103levelx.unclemanco.com
   type: ssr
@@ -890,7 +890,7 @@ proxies:
   password: Yk4UdrOyQg
   port: 10120
   protocol: auth_aes128_md5
-  protocol-param: '# [By EbraSha] ⚡'
+  protocol-param: ''
   remarks: 🇨🇳 China - Unknown | 42.157.196.103:10120
   server: 42.157.196.103
   type: ssr
@@ -901,7 +901,7 @@ proxies:
   password: vCmp8ALih6
   port: 10967
   protocol: auth_aes128_md5
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] 🔒'
   remarks: 🇨🇳 China - Unknown | 42.157.196.104:10967
   server: 42.157.196.104
   type: ssr
@@ -937,17 +937,6 @@ proxies:
   protocol-param: ''
   remarks: 🇺🇸 United States - Los Angeles | 45.32.93.147:16608
   server: 45.32.93.147
-  type: ssr
-- cipher: aes-256-cfb
-  name: 45.33.88.190:443
-  obfs: plain
-  obfs-param: ''
-  password: 9d6cceaa373bf2c8acb22e60b6a58be6
-  port: 443
-  protocol: origin
-  protocol-param: ''
-  remarks: 🇺🇸 United States - Cedar Knolls | 45.33.88.190:443
-  server: 45.33.88.190
   type: ssr
 - cipher: aes-256-cfb
   name: 45.33.93.207:443
@@ -1858,7 +1847,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54113
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] 🔒'
+  protocol-param: ''
   remarks: 🇯🇵 Japan - Tokyo | live.bilibilicloud01.com:54113
   server: live.bilibilicloud01.com
   type: ssr
@@ -1869,7 +1858,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 49434
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] 🔒'
   remarks: 🇯🇵 Japan - Tokyo | manga.bilibilicloud01.com:49434
   server: manga.bilibilicloud01.com
   type: ssr
@@ -1902,7 +1891,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54102
   protocol: auth_aes128_sha1
-  protocol-param: ''
+  protocol-param: '# [By EbraSha] 🔒'
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54102
   server: show.bilibilicloud01.com
   type: ssr
@@ -1913,7 +1902,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54103
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] ⚡'
+  protocol-param: ''
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54103
   server: show.bilibilicloud01.com
   type: ssr
@@ -1924,7 +1913,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54114
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] 🔒'
+  protocol-param: ''
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54114
   server: show.bilibilicloud01.com
   type: ssr
@@ -1935,7 +1924,7 @@ proxies:
   password: Mv4e0QHWPwdbKiCF
   port: 54115
   protocol: auth_aes128_sha1
-  protocol-param: '# [By EbraSha] 🔒'
+  protocol-param: ''
   remarks: 🇯🇵 Japan - Tokyo | show.bilibilicloud01.com:54115
   server: show.bilibilicloud01.com
   type: ssr
@@ -2050,7 +2039,6 @@ proxy-groups:
   - 42.157.196.104:20037
   - 45.158.22.242:54203
   - 45.32.93.147:16608
-  - 45.33.88.190:443
   - 45.33.93.207:443
   - 45.56.94.40:443
   - 45.58.148.66:21763
@@ -2233,7 +2221,6 @@ proxy-groups:
   - 42.157.196.104:20037
   - 45.158.22.242:54203
   - 45.32.93.147:16608
-  - 45.33.88.190:443
   - 45.33.93.207:443
   - 45.56.94.40:443
   - 45.58.148.66:21763
