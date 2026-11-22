@@ -141,6 +141,14 @@ def merge_clash_configs(base_path, proxy_path, output_path):
 def merge_proxies(template_file="clash18.yaml",
                   proxies_file="clash_proxies.yaml",
                   output_file="clash_proxies_full.yaml"):
+    if not os.path.isfile(proxies_file):
+        raise FileNotFoundError(proxies_file)
+
+    with open(proxies_file, "r", encoding="utf-8-sig", errors="ignore") as _f:
+        _head = _f.read(512).lstrip().lower()
+
+    if _head.startswith("<!doctype") or _head.startswith("<html") or "<title>" in _head:
+        raise ValueError(f"{proxies_file} 是 HTML 错误页，不是 YAML")
     # 默认文件名：把本脚本与两个 YAML 文件放在同一目录即可
     BASE_CONFIG = Path(template_file)
     PROXY_CONFIG = Path(proxies_file)
