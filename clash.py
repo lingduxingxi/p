@@ -958,6 +958,48 @@ def find_proxy_group(url_yaml):
 
     raise ValueError("没有找到可用的代理组！")
 
+def is_valid_yaml_file(path):
+    """检查文件是否为有效 Clash YAML，排除 Cloudflare/HTML 错误页。"""
+    try:
+        if not os.path.isfile(path):
+            return False
+
+        with open(path, "r", encoding="utf-8-sig", errors="ignore") as f:
+            head = f.read(4096)
+
+        if not head.strip():
+            return False
+
+        low = head.lstrip().lower()
+        if (
+            low.startswith("<!doctype")
+            or low.startswith("<html")
+            or "<title>" in low
+            or "cloudflare" in low
+            or "error 1027" in low
+        ):
+            print(f"[校验失败] {path} 是 HTML/错误页，不是 YAML")
+            return False
+
+        with open(path, "r", encoding="utf-8-sig") as f:
+            data = yaml.safe_load(f)
+
+        if not isinstance(data, dict):
+            print(f"[校验失败] {path} 根节点不是字典")
+            return False
+
+        if "proxies" not in data and "proxy-groups" not in data:
+            print(f"[校验失败] {path} 缺少 proxies/proxy-groups")
+            return False
+
+        return True
+
+    except Exception as e:
+        print(f"[校验失败] {path}: {e}")
+        return False
+
+
+
 
 def merge_proxies_old(template_file="clash7.yaml",
                   proxies_file="clash_proxies.yaml",
@@ -1003,20 +1045,30 @@ def get_clash_link():
             url_yaml = f"{type_}1{i+1}.yaml"
 
         if 'cbusifabcap' in url:
-            # get_clash7() #'clash7.yaml'
-            # download_files.download_file(url, url_yaml)
-            download_file2('https://ghfile.geekertao.top/' + url, "clash_proxies.yaml")
+            proxy_file = "clash_proxies.yaml"
+
+            # 1) 先尝试镜像
+            try:
+                download_file2('https://ghfile.geekertao.top/' + url, proxy_file)
+            except Exception as e:
+                print(f"[警告] 镜像下载异常: {e}")
+
+            # 2) 校验镜像内容，失败则回退原始地址
+            if not is_valid_yaml_file(proxy_file):
+                print("[警告] 镜像返回无效内容，回退原始 GitHub 地址")
+                if os.path.exists(proxy_file):
+                    os.remove(proxy_file)
+                download_files.download_file(url, proxy_file)
+
+            # 3) 仍无效则跳过该源，避免整个程序崩溃
+            if not is_valid_yaml_file(proxy_file):
+                print(f"[跳过] {url} 无法获取有效 YAML，跳过此源")
+                continue
+
+            # 4) 下载完整配置并合并
             download_files.download_file(url, url_yaml)
             merge_proxies(output_file=url_yaml)
-            # url_yaml = "clash19.yaml"
-
-            # result = fix_clash_config(url_yaml)
-            # print("\n结果:", result)
-            # fixed_yaml = repair_clash_config(url_yaml)
-            # if fixed_yaml:
-            #     print(f"\n修复成功：{fixed_yaml}")
         else:
-            # download_files.download_file(url, url_yaml)
             download_file2('https://ghfile.geekertao.top/' + url, url_yaml)
             download_files.download_file(url, url_yaml)
         with open(url_yaml, "r", encoding="utf-8") as f:
