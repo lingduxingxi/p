@@ -1,6 +1,6 @@
 allow-lan: false
 log-level: info
-mixed-port: 7892
+mixed-port: 10806
 mode: rule
 proxies:
 - cipher: chacha20-ietf
