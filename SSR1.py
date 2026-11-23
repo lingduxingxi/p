@@ -1317,7 +1317,7 @@ def get_config_informationurl(local_port):
 
         # print('1265unique_proxies',unique_proxies)
         clash_config = {
-            "mixed-port": 7890,
+            "mixed-port": local_port,
             "socks-port": local_port,  # 固定 SOCKS5 端口
             "allow-lan": False,
             "mode": "rule",
