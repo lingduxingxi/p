@@ -1045,20 +1045,30 @@ def get_clash_link():
             url_yaml = f"{type_}1{i+1}.yaml"
 
         if 'cbusifabcap' in url:
-            # get_clash7() #'clash7.yaml'
-            # download_files.download_file(url, url_yaml)
-            download_file2('https://ghfile.geekertao.top/' + url, "clash_proxies.yaml")
+            proxy_file = "clash_proxies.yaml"
+
+            # 1) 先尝试镜像
+            try:
+                download_file2('https://ghfile.geekertao.top/' + url, proxy_file)
+            except Exception as e:
+                print(f"[警告] 镜像下载异常: {e}")
+
+            # 2) 校验镜像内容，失败则回退原始地址
+            if not is_valid_yaml_file(proxy_file):
+                print("[警告] 镜像返回无效内容，回退原始 GitHub 地址")
+                if os.path.exists(proxy_file):
+                    os.remove(proxy_file)
+                download_files.download_file(url, proxy_file)
+
+            # 3) 仍无效则跳过该源，避免整个程序崩溃
+            if not is_valid_yaml_file(proxy_file):
+                print(f"[跳过] {url} 无法获取有效 YAML，跳过此源")
+                continue
+
+            # 4) 下载完整配置并合并
             download_files.download_file(url, url_yaml)
             merge_proxies(output_file=url_yaml)
-            # url_yaml = "clash19.yaml"
-
-            # result = fix_clash_config(url_yaml)
-            # print("\n结果:", result)
-            # fixed_yaml = repair_clash_config(url_yaml)
-            # if fixed_yaml:
-            #     print(f"\n修复成功：{fixed_yaml}")
         else:
-            # download_files.download_file(url, url_yaml)
             download_file2('https://ghfile.geekertao.top/' + url, url_yaml)
             download_files.download_file(url, url_yaml)
         with open(url_yaml, "r", encoding="utf-8") as f:
@@ -1436,6 +1446,12 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def generate_2_config(very_good_config,file_name_8899,file_name_88):
+    if not very_good_config or very_good_config == -1:
+        print(f"[跳过] very_good_config 无效: {very_good_config}")
+        return False
+    if not os.path.isfile(very_good_config):
+        print(f"[错误] 配置文件不存在: {very_good_config}，跳过复制")
+        return False
     print(f"复制文件{very_good_config}到{file_name_8899}")
     copy(very_good_config, file_name_8899)
     copy(very_good_config, "clash.yaml")
@@ -1475,7 +1491,11 @@ def main_proxy(local_port=8899):
     if node_index == 0:#无有效节点  需要更新
         very_good_config = get_config_informationurl(local_port)  #clash17.yaml
         if very_good_config and very_good_config != -1:
-            generate_2_config(very_good_config,file_name_8899,file_name_88)
+            if not generate_2_config(very_good_config, file_name_8899, file_name_88):
+                # 文件缺失，重新获取
+                very_good_config = get_config_informationurl(local_port)
+                if very_good_config and very_good_config != -1:
+                    generate_2_config(very_good_config, file_name_8899, file_name_88)
 
         print(f'575开始杀死进程{exe_name}')
         kill_exe()  # exe_name, exe_name_path, object_name
