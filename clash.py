@@ -1371,7 +1371,7 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
     # node_int = 8
     try:
         with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
-            valid_node_list = eval(f.read())
+            valid_node_list = [x for x in eval(f.read()) if os.path.isfile(x)]
         node_int = len(valid_node_list)
     except:
         node_int = 0
@@ -1446,6 +1446,12 @@ def start_exe(local_port, run_type='单独', err_node_number=1,show_notification
 
 
 def generate_2_config(very_good_config,file_name_8899,file_name_88):
+    if not very_good_config or very_good_config == -1:
+        print(f"[跳过] very_good_config 无效: {very_good_config}")
+        return False
+    if not os.path.isfile(very_good_config):
+        print(f"[错误] 配置文件不存在: {very_good_config}，跳过复制")
+        return False
     print(f"复制文件{very_good_config}到{file_name_8899}")
     copy(very_good_config, file_name_8899)
     copy(very_good_config, "clash.yaml")
@@ -1478,20 +1484,24 @@ def main_proxy(local_port=8899):
 
     try:
         with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
-            valid_node_list = eval(f.read())
+            valid_node_list = [x for x in eval(f.read()) if os.path.isfile(x)]
         node_index = len(valid_node_list)
     except:
         node_index = 0
     if node_index == 0:#无有效节点  需要更新
         very_good_config = get_config_informationurl(local_port)  #clash17.yaml
         if very_good_config and very_good_config != -1:
-            generate_2_config(very_good_config,file_name_8899,file_name_88)
+            if not generate_2_config(very_good_config, file_name_8899, file_name_88):
+                # 文件缺失，重新获取
+                very_good_config = get_config_informationurl(local_port)
+                if very_good_config and very_good_config != -1:
+                    generate_2_config(very_good_config, file_name_8899, file_name_88)
 
         print(f'575开始杀死进程{exe_name}')
         kill_exe()  # exe_name, exe_name_path, object_name
         try:
             with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
-                valid_node_list = eval(f.read())
+                valid_node_list = [x for x in eval(f.read()) if os.path.isfile(x)]
             node_index = len(valid_node_list)
         except:
             node_index = 0
@@ -1527,7 +1537,7 @@ def main_proxy(local_port=8899):
             # 新增修复代码
             try:
                 with open(fr'{object_name_output_log}/{type_}_valid_node_list.txt', 'r+', encoding='utf-8') as f:
-                    valid_node_list = eval(f.read())
+                    valid_node_list = [x for x in eval(f.read()) if os.path.isfile(x)]
                 node_index = len(valid_node_list)
             except:
                 node_index = 0
