@@ -10,7 +10,7 @@
 运行：
     py -3.12 merge_clash_yaml.py
 """
-
+import os
 from pathlib import Path
 import copy
 import sys
